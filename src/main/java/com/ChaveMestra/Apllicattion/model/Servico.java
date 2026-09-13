@@ -10,7 +10,7 @@ public class Servico {
 
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
-    private int id;
+    private Integer id;
 
     @Column (name = "nome", nullable = false, length = 100)
     private String nome;
@@ -21,7 +21,7 @@ public class Servico {
     @Column (name = "preco_base", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoBase = BigDecimal.ZERO;
 
-    public integer getId() {
+    public Integer getId() {
         return id;
     }
 

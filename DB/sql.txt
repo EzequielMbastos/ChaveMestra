@@ -1,0 +1,114 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.cliente (
+  id integer NOT NULL DEFAULT nextval('cliente_id_seq'::regclass),
+  nome character varying NOT NULL,
+  cpf character varying NOT NULL UNIQUE,
+  telefone character varying,
+  endereco text,
+  CONSTRAINT cliente_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.fornecedor (
+  id integer NOT NULL DEFAULT nextval('fornecedor_id_seq'::regclass),
+  nome character varying NOT NULL,
+  cnpj character varying,
+  telefone character varying,
+  CONSTRAINT fornecedor_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.categoria (
+  id integer NOT NULL DEFAULT nextval('categoria_id_seq'::regclass),
+  nome character varying NOT NULL,
+  descricao character varying,
+  CONSTRAINT categoria_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.produto (
+  id integer NOT NULL DEFAULT nextval('produto_id_seq'::regclass),
+  codigo_catalogo character varying UNIQUE,
+  nome character varying NOT NULL,
+  preco_venda numeric NOT NULL DEFAULT 0.00,
+  preco_custo numeric NOT NULL DEFAULT 0.00,
+  categoria_id integer,
+  fornecedor_id integer,
+  CONSTRAINT produto_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_produto_fornecedor FOREIGN KEY (fornecedor_id) REFERENCES public.fornecedor(id),
+  CONSTRAINT fk_produto_categoria FOREIGN KEY (categoria_id) REFERENCES public.categoria(id)
+);
+CREATE TABLE public.estoque (
+  id integer NOT NULL DEFAULT nextval('estoque_id_seq'::regclass),
+  produto_id integer NOT NULL UNIQUE,
+  quantidade integer NOT NULL DEFAULT 0,
+  minimo integer NOT NULL DEFAULT 5,
+  dt_entrada timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  dt_atualizacao timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT estoque_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_estoque_produto FOREIGN KEY (produto_id) REFERENCES public.produto(id)
+);
+CREATE TABLE public.servico (
+  id integer NOT NULL DEFAULT nextval('servico_id_seq'::regclass),
+  nome character varying NOT NULL,
+  descricao character varying,
+  preco_base numeric NOT NULL DEFAULT 0.00,
+  CONSTRAINT servico_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.atendimento (
+  id integer NOT NULL DEFAULT nextval('atendimento_id_seq'::regclass),
+  cliente_id integer,
+  data timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  forma_pagamento character varying NOT NULL CHECK (forma_pagamento::text = ANY (ARRAY['pix'::character varying, 'cartao_credito'::character varying, 'cartao_debito'::character varying, 'dinheiro'::character varying]::text[])),
+  valor_total numeric NOT NULL DEFAULT 0.00,
+  desconto numeric NOT NULL DEFAULT 0.00,
+  valor_liquido numeric DEFAULT (valor_total - desconto),
+  status character varying NOT NULL DEFAULT 'aberto'::character varying CHECK (status::text = ANY (ARRAY['aberto'::character varying, 'finalizado'::character varying, 'cancelado'::character varying]::text[])),
+  observacao character varying,
+  CONSTRAINT atendimento_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_atendimento_cliente FOREIGN KEY (cliente_id) REFERENCES public.cliente(id)
+);
+CREATE TABLE public.atendimento_item (
+  id integer NOT NULL DEFAULT nextval('atendimento_item_id_seq'::regclass),
+  atendimento_id integer NOT NULL,
+  produto_id integer,
+  servico_id integer,
+  quantidade integer NOT NULL DEFAULT 1,
+  valor_unitario numeric NOT NULL,
+  valor_total numeric NOT NULL,
+  tipo character varying NOT NULL CHECK (tipo::text = ANY (ARRAY['produto'::character varying, 'servico'::character varying]::text[])),
+  desconto numeric DEFAULT 0.00,
+  observacao character varying,
+  CONSTRAINT atendimento_item_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_item_atendimento FOREIGN KEY (atendimento_id) REFERENCES public.atendimento(id),
+  CONSTRAINT fk_item_produto FOREIGN KEY (produto_id) REFERENCES public.produto(id),
+  CONSTRAINT fk_item_servico FOREIGN KEY (servico_id) REFERENCES public.servico(id)
+);
+CREATE TABLE public.categoria_financeira (
+  id integer NOT NULL DEFAULT nextval('categoria_financeira_id_seq'::regclass),
+  nome character varying NOT NULL,
+  tipo character varying NOT NULL CHECK (tipo::text = ANY (ARRAY['receita'::character varying, 'despesa'::character varying]::text[])),
+  descricao character varying,
+  CONSTRAINT categoria_financeira_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.movimento_financeiro (
+  id integer NOT NULL DEFAULT nextval('movimento_financeiro_id_seq'::regclass),
+  categoria_id integer NOT NULL,
+  atendimento_id integer,
+  pessoa character varying,
+  descricao character varying,
+  valor numeric NOT NULL,
+  data_movimento timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  vencimento date,
+  status character varying NOT NULL DEFAULT 'pendente'::character varying CHECK (status::text = ANY (ARRAY['pendente'::character varying, 'pago'::character varying, 'cancelado'::character varying]::text[])),
+  CONSTRAINT movimento_financeiro_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_mov_categoria FOREIGN KEY (categoria_id) REFERENCES public.categoria_financeira(id),
+  CONSTRAINT fk_mov_atendimento FOREIGN KEY (atendimento_id) REFERENCES public.atendimento(id)
+);
+CREATE TABLE public.ia_interacao (
+  id integer NOT NULL DEFAULT nextval('ia_interacao_id_seq'::regclass),
+  usuario_pergunta text NOT NULL,
+  ia_resposta text,
+  tipo_pergunta character varying NOT NULL DEFAULT 'texto'::character varying CHECK (tipo_pergunta::text = ANY (ARRAY['texto'::character varying, 'voz'::character varying]::text[])),
+  data_interacao timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  tempo_resposta numeric,
+  relevancia character varying CHECK (relevancia::text = ANY (ARRAY['alta'::character varying, 'media'::character varying, 'baixa'::character varying]::text[])),
+  observacao character varying,
+  CONSTRAINT ia_interacao_pkey PRIMARY KEY (id)
+);
