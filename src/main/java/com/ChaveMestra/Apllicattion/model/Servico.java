@@ -20,4 +20,36 @@ public class Servico {
 
     @Column (name = "preco_base", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoBase = BigDecimal.ZERO;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
+    }
+
+    public BigDecimal getPrecoBase() {
+        return precoBase;
+    }
+
+    public void setPrecoBase(BigDecimal precoBase) {
+        this.precoBase = precoBase;
+    }
 }
