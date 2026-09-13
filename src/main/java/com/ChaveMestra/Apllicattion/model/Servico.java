@@ -21,7 +21,7 @@ public class Servico {
     @Column (name = "preco_base", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoBase = BigDecimal.ZERO;
 
-    public int getId() {
+    public integer getId() {
         return id;
     }
 
