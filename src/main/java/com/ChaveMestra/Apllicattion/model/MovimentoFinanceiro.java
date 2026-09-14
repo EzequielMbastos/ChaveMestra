@@ -7,18 +7,19 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table (name = "movimento_financeiro")
+@Table(name = "movimento_financeiro")
 public class MovimentoFinanceiro {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @ManyToOne
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
 
-
-    @JoinColumn(name = "atendimento_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "atendimento_id")
     private Atendimento atendimento;
 
     @Column(name = "pessoa", length = 100)
