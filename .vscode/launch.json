@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-ApllicattionApplication<Apllicattion>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.ChaveMestra.Apllicattion.ApllicattionApplication",
+      "projectName": "Apllicattion",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

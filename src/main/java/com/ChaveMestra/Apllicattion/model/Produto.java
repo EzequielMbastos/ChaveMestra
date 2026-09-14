@@ -11,8 +11,8 @@ public class Produto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "codigo_catalago", nullable = false, unique = true, length = 50)
-    private String codigoCatalago;
+    @Column(name = "codigo_catalogo", nullable = false, unique = true, length = 50)
+    private String codigoCatalogo;
 
     @Column(name = "nome", nullable = false, length = 100)
     private String nome;
@@ -71,12 +71,12 @@ public class Produto {
         this.nome = nome;
     }
 
-    public String getCodigoCatalago() {
-        return codigoCatalago;
+    public String getCodigoCatalogo() {
+        return codigoCatalogo;
     }
 
-    public void setCodigoCatalago(String codigoCatalago) {
-        this.codigoCatalago = codigoCatalago;
+    public void setCodigoCatalogo(String codigoCatalogo) {
+        this.codigoCatalogo = codigoCatalogo;
     }
 
     public int getId() {

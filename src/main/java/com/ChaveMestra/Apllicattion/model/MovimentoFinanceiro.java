@@ -1,9 +1,9 @@
 package com.ChaveMestra.Apllicattion.model;
 
 import jakarta.persistence.*;
-import org.springframework.cglib.core.Local;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -35,7 +35,7 @@ public class MovimentoFinanceiro {
     private LocalDateTime dataMovimento;
 
     @Column(name = "vencimento")
-    private LocalDateTime vencimento;
+    private LocalDate vencimento;
 
     @Column(name = "status", nullable = false, length = 15)
     private String status = "pendente";
@@ -56,11 +56,11 @@ public class MovimentoFinanceiro {
         this.status = status;
     }
 
-    public LocalDateTime getVencimento() {
+    public LocalDate getVencimento() {
         return vencimento;
     }
 
-    public void setVencimento(LocalDateTime vencimento) {
+    public void setVencimento(LocalDate vencimento) {
         this.vencimento = vencimento;
     }
 
