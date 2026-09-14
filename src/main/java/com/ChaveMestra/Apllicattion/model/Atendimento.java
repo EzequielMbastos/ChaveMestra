@@ -15,7 +15,6 @@ public class Atendimento {
 
     @ManyToOne
     @JoinColumn (name = "cliente_id")
-    @JoinColumn (name = "cliente_id")
     private Cliente cliente;
 
     @Column (name = "data", nullable = false)
@@ -41,4 +40,7 @@ public class Atendimento {
     @Column(name =  "observacao", length = 255)
     private String observacao;
 
+
+
 }
+
