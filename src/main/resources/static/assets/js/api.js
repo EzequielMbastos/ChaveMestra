@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'chave_mestra_db_v1';
-const MOCK = true; // fallback apenas quando localStorage não estiver disponível
+const MOCK = false; // fallback apenas quando localStorage não estiver disponível
 
 const MOCK_DATA = {
   produtos: [
