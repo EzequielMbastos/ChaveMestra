@@ -20,3 +20,5 @@ application-prod.properties
 # Arquivos compilados
 target/
 *.class
+
+.env
