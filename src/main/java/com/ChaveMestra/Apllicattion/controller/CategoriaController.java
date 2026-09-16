@@ -1,8 +1,10 @@
 package com.ChaveMestra.Apllicattion.controller;
-import com.ChaveMestra.Apllicattion.model.Categoria;
 import com.ChaveMestra.Apllicattion.service.CategoriaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.ChaveMestra.Apllicattion.dto.CategoriaRequest;
+import com.ChaveMestra.Apllicattion.dto.CategoriaResponse;
+
 
 import java.util.List;
 
@@ -17,13 +19,14 @@ public class CategoriaController {
     }
 
     @PostMapping
-    public ResponseEntity<Categoria> cadastrar(@RequestBody Categoria categoria ){
-        Categoria categoriaSalva = categoriaService.cadastrar(categoria);
+    public ResponseEntity<CategoriaResponse> cadastrar(@RequestBody CategoriaRequest request ){
+        CategoriaResponse categoriaSalva = categoriaService.cadastrar(request);
         return ResponseEntity.ok(categoriaSalva);
     }
 
+
     @GetMapping
-    public ResponseEntity<List<Categoria>> listar(){
+    public ResponseEntity<List<CategoriaResponse>> listar(){
         return ResponseEntity.ok(categoriaService.listar());
     }
 

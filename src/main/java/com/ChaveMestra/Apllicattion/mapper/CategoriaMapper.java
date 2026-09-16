@@ -19,8 +19,8 @@ public class CategoriaMapper {
 
     public Categoria toCategoria(CategoriaRequest request) {
         Categoria categoria = new Categoria();
-        categoria.setNome();
-        categoria.setDescricao(categoria.getDescricao());
+        categoria.setNome(request.nome());
+        categoria.setDescricao(request.descricao());
         return categoria;
     }
 }
