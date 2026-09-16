@@ -8,7 +8,7 @@ public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Integer id;
 
     @Column(name = "nome", nullable = false, length = 100)
     private String nome;
@@ -22,11 +22,11 @@ public class Cliente {
     @Column(name = "endereco", columnDefinition = "TEXT")
     private String endereco;
 
-    public long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

@@ -16,7 +16,7 @@ public class MovimentoFinanceiro {
 
     @ManyToOne
     @JoinColumn(name = "categoria_id", nullable = false)
-    private Categoria categoria;
+    private CategoriaFinanceira categoriaFinanceira;
 
     @ManyToOne
     @JoinColumn(name = "atendimento_id")
@@ -104,11 +104,11 @@ public class MovimentoFinanceiro {
         this.atendimento = atendimento;
     }
 
-    public Categoria getCategoria() {
-        return categoria;
+    public CategoriaFinanceira getCategoria() {
+        return categoriaFinanceira;
     }
 
-    public void setCategoria(Categoria categoria) {
-        this.categoria = categoria;
+    public void setCategoria(CategoriaFinanceira categoriaFinanceira) {
+        this.categoriaFinanceira = categoriaFinanceira;
     }
 }
