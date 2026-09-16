@@ -22,10 +22,10 @@ public class Estoque {
     @Column(name = "minimo", nullable = false)
     private int minimo = 5;
 
-    @Column(name = "dtEntrada")
+    @Column(name = "dt_entrada")
     private LocalDateTime dtEntrada;
 
-    @Column(name = "dtAtualizacao")
+    @Column(name = "dt_atualizacao")
     private LocalDateTime dtAtualizacao;
 
     public int getId() {
