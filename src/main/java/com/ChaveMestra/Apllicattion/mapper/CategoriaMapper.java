@@ -1,4 +1,26 @@
 package com.ChaveMestra.Apllicattion.mapper;
 
+import com.ChaveMestra.Apllicattion.dto.CategoriaRequest;
+import com.ChaveMestra.Apllicattion.dto.CategoriaResponse;
+import com.ChaveMestra.Apllicattion.model.Categoria;
+import org.springframework.stereotype.Component;
+
+@Component
 public class CategoriaMapper {
+
+    public CategoriaResponse toResponse(Categoria categoria) {
+            CategoriaResponse categoriaResponse =
+                new CategoriaResponse(
+                        categoria.getId(),
+                        categoria.getNome(),
+                        categoria.getDescricao());
+            return  categoriaResponse;
+    }
+
+    public Categoria toCategoria(CategoriaRequest request) {
+        Categoria categoria = new Categoria();
+        categoria.setNome();
+        categoria.setDescricao(categoria.getDescricao());
+        return categoria;
+    }
 }
