@@ -30,4 +30,15 @@ public class CategoriaController {
         return ResponseEntity.ok(categoriaService.listar());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoriaResponse> buscarPorId(@PathVariable Integer id) {
+        CategoriaResponse categoria = categoriaService.buscarPorId(id);
+        return ResponseEntity.ok(categoria);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletar(@PathVariable Integer id) {
+        categoriaService.excluir(id);
+        return ResponseEntity.noContent().build();
+    }
 }
