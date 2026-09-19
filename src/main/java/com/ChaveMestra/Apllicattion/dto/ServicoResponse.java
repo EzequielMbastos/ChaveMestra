@@ -1,4 +1,6 @@
 package com.ChaveMestra.Apllicattion.dto;
 
-public record ServicoResponse() {
+import java.math.BigDecimal;
+
+public record ServicoResponse(Integer Id, String nome, String descricao, BigDecimal precoBase) {
 }
