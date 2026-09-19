@@ -9,12 +9,11 @@ import org.springframework.stereotype.Component;
 public class CategoriaMapper {
 
     public CategoriaResponse toResponse(Categoria categoria) {
-            CategoriaResponse categoriaResponse =
+            return
                 new CategoriaResponse(
                         categoria.getId(),
                         categoria.getNome(),
                         categoria.getDescricao());
-            return  categoriaResponse;
     }
 
     public Categoria toCategoria(CategoriaRequest request) {
