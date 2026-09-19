@@ -8,6 +8,8 @@ public interface ProdutoRepository extends JpaRepository<Produto, Integer> {
 
     boolean existsByCategoriaId(Integer categoriaId);
 
+    boolean existsByFornecedorId(Integer fornececedorId);
+
     //O JpaRepository já nos entrega operações básicas como:
 //
 //save()
