@@ -1,4 +1,4 @@
 package com.ChaveMestra.Apllicattion.dto;
 
-public record CategoriaFinanceira() {
+public record CategoriaFinanceiraRequest(String nome, String tipo, String descricao) {
 }
