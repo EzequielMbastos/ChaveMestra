@@ -28,6 +28,19 @@ public class Estoque {
     @Column(name = "dt_atualizacao")
     private LocalDateTime dtAtualizacao;
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Estoque estoque = (Estoque) o;
+        return id != null && id.equals(estoque.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
     @PrePersist
     public void prePersist() {
         LocalDateTime agora = LocalDateTime.now();
