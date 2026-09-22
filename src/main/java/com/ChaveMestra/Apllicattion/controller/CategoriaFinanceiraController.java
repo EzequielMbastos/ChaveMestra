@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/CategoriaFinanceira")
+@RequestMapping("/categoria-financeira")
 public class CategoriaFinanceiraController {
 
     private final CategoriaFinanceiraService categoriaFinanceiraService;
