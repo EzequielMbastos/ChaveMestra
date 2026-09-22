@@ -1,4 +1,4 @@
 package com.ChaveMestra.Apllicattion.controller;
 
-public class AtendimentoItemController {
+public class CategoriaFinanceiraController {
 }
