@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-public class FornecedorService {
+public class FornecedorService{
 
     private final FornecedorRepository fornecedorRepository;
     private final FornecedorMapper fornecedorMapper;
