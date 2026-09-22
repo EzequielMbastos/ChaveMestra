@@ -41,4 +41,10 @@ public class CategoriaController {
         categoriaService.excluir(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CategoriaResponse> atualizar(@PathVariable Integer id,
+                                                       @RequestBody CategoriaRequest request) {
+        return ResponseEntity.ok(categoriaService.atualizar(id, request));
+    }
 }
