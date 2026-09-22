@@ -40,13 +40,9 @@ public class ServicoController {
         return  ResponseEntity.noContent().build();
     }
 
-    @PutMapping("{/id}")
+    @PutMapping("/{id}")
     public  ResponseEntity<ServicoResponse> atualizar(@PathVariable Integer id, @RequestBody ServicoRequest request){
         ServicoResponse servicoAtualizado = servicoService.atualizar(id, request);
         return ResponseEntity.ok(servicoAtualizado);
     }
 }
-//Produz o ServicoController — mesmo molde do FornecedorController que você já fechou:
-// @RestController, @RequestMapping("/servicos"), injeta ServicoService
-// (instância minúscula servicoService),
-// cinco endpoints (cadastrar, listar, buscarPorId, deletar, atualizar).
