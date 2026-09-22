@@ -1,3 +1,17 @@
+// Endpoints do backend
+const API = {
+  clientes:              '/clientes',
+  fornecedores:          '/fornecedores',
+  categorias:            '/categorias',
+  categoriasFinanceiras: '/categoria-financeira',  // singular!
+  produtos:              '/produtos',
+  servicos:              '/servicos',
+  estoques:              '/estoques',
+  movimentosFinanceiros: '/movimentos-financeiros',
+  atendimentos:          '/atendimentos'
+};
+
+
 async function apiGet(endpoint) {
   const response = await fetch(endpoint);
 
