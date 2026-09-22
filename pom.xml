@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.ChaveMestra</groupId>
-	<artifactId>Apllicattion</artifactId>
+	<artifactId>Application</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
