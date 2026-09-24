@@ -1,6 +1,7 @@
 package com.ChaveMestra.Application.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.math.BigDecimal;
 
@@ -28,15 +29,15 @@ public class AtendimentoItem {
     private int quantidade = 1;
 
     @Column (name = "valor_unitario",nullable = false, precision = 10, scale = 2)
-    private BigDecimal valorUnitario;
+    private BigDecimal valorUnitario = BigDecimal.ZERO;
 
     @Column (name = "valor_total",nullable = false, precision = 10, scale = 2)
-    private BigDecimal valorTotal;
+    private BigDecimal valorTotal = BigDecimal.ZERO;
 
     @Column (name = "tipo", nullable = false)
     private String tipo;
 
-    @Column ( name = "desconto", precision = 10, scale = 2)
+    @Column ( name = "desconto", nullable = false, precision = 10, scale = 2)
     private BigDecimal desconto = BigDecimal.ZERO;
     // No banco, o desconto tem DEFAULT 0.00. No Java, se não inicializar com BigDecimal.ZERO, fica null.
     // Inicializando com ZERO, evita NullPointerException no Service.
@@ -123,8 +124,12 @@ public class AtendimentoItem {
     public void setAtendimento(Atendimento atendimento) {
         this.atendimento = atendimento;
     }
-}
 
+    @AssertTrue(message = "O item deve ter produto ou serviço, mas não ambos")
+    public boolean isProdutoOuServicoValido() {
+        return (produto != null) ^ (servico != null);
+    }
+}
 
 
 

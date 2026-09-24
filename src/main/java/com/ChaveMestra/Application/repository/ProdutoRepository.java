@@ -8,7 +8,7 @@ public interface ProdutoRepository extends JpaRepository<Produto, Integer> {
 
     boolean existsByCategoriaId(Integer categoriaId);
 
-    boolean existsByFornecedorId(Integer fornececedorId);
+    boolean existsByFornecedorId(Integer fornecedorId);
 
     //O JpaRepository já nos entrega operações básicas como:
 //

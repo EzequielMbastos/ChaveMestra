@@ -1,26 +1,28 @@
 package com.ChaveMestra.Application.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 
 @Entity
-@Table (name = "servico")
+@Table(name = "servico")
 public class Servico {
 
     @Id
-    @GeneratedValue (strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column (name = "nome", nullable = false, length = 100)
+    @Column(name = "nome", nullable = false, length = 100)
     private String nome;
 
-    @Column (name = "descricao" , length = 255)
+    @Column(name = "descricao", length = 255)
     private String descricao;
 
-    @Column (name = "preco_base", nullable = false, precision = 10, scale = 2)
+    @Column(name = "preco_base", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoBase = BigDecimal.ZERO;
 
+    @JsonProperty("id")
     public Integer getId() {
         return id;
     }

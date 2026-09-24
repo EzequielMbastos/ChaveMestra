@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table (name = "atendimento")
@@ -16,6 +18,9 @@ public class Atendimento {
     @ManyToOne
     @JoinColumn (name = "cliente_id")
     private Cliente cliente;
+
+    @OneToMany(mappedBy = "atendimento", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AtendimentoItem> itens = new ArrayList<>();
 
     @Column (name = "data", nullable = false)
     private LocalDateTime data;
@@ -110,6 +115,24 @@ public class Atendimento {
 
     public void setObservacao(String observacao) {
         this.observacao = observacao;
+    }
+
+    public List<AtendimentoItem> getItens() {
+        return itens;
+    }
+
+    public void setItens(List<AtendimentoItem> itens) {
+        this.itens = itens;
+    }
+
+    public void adicionarItem(AtendimentoItem item) {
+        this.itens.add(item);
+        item.setAtendimento(this);
+    }
+
+    public void removerItem(AtendimentoItem item) {
+        this.itens.remove(item);
+        item.setAtendimento(null);
     }
 }
 

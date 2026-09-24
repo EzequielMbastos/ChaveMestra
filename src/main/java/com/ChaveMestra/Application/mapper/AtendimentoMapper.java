@@ -32,8 +32,8 @@ public class AtendimentoMapper {
         atendimento.setCliente(cliente);
         atendimento.setData(LocalDateTime.now());
         atendimento.setFormaPagamento(request.formaPagamento());
-        atendimento.setValorTotal(BigDecimal.ZERO);
-        atendimento.setDesconto(request.desconto());
+        atendimento.setValorTotal(BigDecimal.ZERO); // Será calculado após adicionar itens
+        atendimento.setDesconto(request.desconto() != null ? request.desconto() : BigDecimal.ZERO);
         atendimento.setStatus("aberto");
         atendimento.setObservacao(request.observacao());
         return atendimento;
