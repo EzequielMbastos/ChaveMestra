@@ -10,6 +10,7 @@ import com.ChaveMestra.Application.repository.ClienteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -68,11 +69,24 @@ public class AtendimentoService {
 
         atendimento.setCliente(cliente);
         atendimento.setFormaPagamento(request.formaPagamento());
-        atendimento.setDesconto(request.desconto());
+        atendimento.setDesconto(request.desconto() != null ? request.desconto() : BigDecimal.ZERO);
         atendimento.setObservacao(request.observacao());
 
         Atendimento atualizado = atendimentoRepository.save(atendimento);
         return atendimentoMapper.toResponse(atualizado);
+    }
+
+    @Transactional
+    public void recalcularValorTotal(Integer atendimentoId) {
+        Atendimento atendimento = atendimentoRepository.findById(atendimentoId)
+                .orElseThrow(() -> new RuntimeException("Atendimento não encontrado"));
+
+        BigDecimal valorTotal = atendimento.getItens().stream()
+                .map(item -> item.getValorTotal() != null ? item.getValorTotal() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        atendimento.setValorTotal(valorTotal);
+        atendimentoRepository.save(atendimento);
     }
 
     @Transactional

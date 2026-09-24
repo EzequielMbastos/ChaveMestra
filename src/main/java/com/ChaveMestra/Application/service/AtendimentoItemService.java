@@ -27,19 +27,22 @@ public class AtendimentoItemService {
     private final ServicoRepository servicoRepository;
     private final EstoqueRepository estoqueRepository;
     private final AtendimentoItemMapper itemMapper;
+    private final AtendimentoService atendimentoService;
 
     public AtendimentoItemService(AtendimentoItemRepository itemRepository,
                                   AtendimentoRepository atendimentoRepository,
                                   ProdutoRepository produtoRepository,
                                   ServicoRepository servicoRepository,
                                   EstoqueRepository estoqueRepository,
-                                  AtendimentoItemMapper itemMapper) {
+                                  AtendimentoItemMapper itemMapper,
+                                  AtendimentoService atendimentoService) {
         this.itemRepository = itemRepository;
         this.atendimentoRepository = atendimentoRepository;
         this.produtoRepository = produtoRepository;
         this.servicoRepository = servicoRepository;
         this.estoqueRepository = estoqueRepository;
         this.itemMapper = itemMapper;
+        this.atendimentoService = atendimentoService;
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +103,7 @@ public class AtendimentoItemService {
         );
 
         AtendimentoItem salvo = itemRepository.save(item);
+        atendimentoService.recalcularValorTotal(request.atendimentoId());
         return itemMapper.toResponse(salvo);
     }
 
@@ -164,6 +168,7 @@ public class AtendimentoItemService {
         item.setObservacao(novosDados.getObservacao());
 
         AtendimentoItem atualizado = itemRepository.save(item);
+        atendimentoService.recalcularValorTotal(request.atendimentoId());
         return itemMapper.toResponse(atualizado);
     }
 
@@ -172,11 +177,14 @@ public class AtendimentoItemService {
         AtendimentoItem item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item de atendimento não encontrado"));
 
+        Integer atendimentoId = item.getAtendimento().getId();
+
         // Se for produto, devolver a quantidade ao estoque
         if ("produto".equalsIgnoreCase(item.getTipo()) && item.getProduto() != null) {
             estoqueRepository.adicionarEstoque(item.getProduto().getId(), item.getQuantidade());
         }
 
         itemRepository.deleteById(id);
+        atendimentoService.recalcularValorTotal(atendimentoId);
     }
 }
