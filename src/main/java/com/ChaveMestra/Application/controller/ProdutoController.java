@@ -3,6 +3,7 @@ package com.ChaveMestra.Application.controller;
 import com.ChaveMestra.Application.dto.ProdutoRequest;
 import com.ChaveMestra.Application.dto.ProdutoResponse;
 import com.ChaveMestra.Application.service.ProdutoService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,7 @@ public class ProdutoController {
     }
 
     @PostMapping
-    public ResponseEntity<ProdutoResponse> cadastrar(@RequestBody ProdutoRequest request) {
+    public ResponseEntity<ProdutoResponse> cadastrar(@Valid @RequestBody ProdutoRequest request) {
         ProdutoResponse produtoSalvo = produtoService.cadastrar(request);
         return ResponseEntity.ok(produtoSalvo);
     }
@@ -36,7 +37,7 @@ public class ProdutoController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ProdutoResponse> atualizar(@PathVariable Integer id,
-                                                     @RequestBody ProdutoRequest request) {
+                                                     @Valid @RequestBody ProdutoRequest request) {
         return ResponseEntity.ok(produtoService.atualizar(id, request));
     }
 
