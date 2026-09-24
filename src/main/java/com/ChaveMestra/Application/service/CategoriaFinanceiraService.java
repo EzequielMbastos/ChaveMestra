@@ -6,6 +6,7 @@ import com.ChaveMestra.Application.mapper.CategoriaFinanceiraMapper;
 import com.ChaveMestra.Application.repository.CategoriaFinanceiraRepository;
 import com.ChaveMestra.Application.repository.MovimentoFinanceiroRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,11 +26,13 @@ public class CategoriaFinanceiraService {
         this.movimentoFinanceiroRepository  = movimentoFinanceiroRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<CategoriaFinanceiraResponse> listar() {
         List<CategoriaFinanceiraResponse> listCategoriaFinanceiraResponse = categoriaFinanceiraRepository.findAll().stream().map(categoriaFinanceira -> categoriaFinanceiraMapper.toResponse(categoriaFinanceira)).collect(Collectors.toList());
         return listCategoriaFinanceiraResponse;
     }
 
+    @Transactional
     public CategoriaFinanceiraResponse cadastrar(CategoriaFinanceiraRequest request) {
         CategoriaFinanceira categoriaFinanceira = categoriaFinanceiraMapper.toCategoriaFinanceira(request);
         CategoriaFinanceira categoriaFinanceiraSalva = categoriaFinanceiraRepository.save(categoriaFinanceira);
@@ -37,6 +40,7 @@ public class CategoriaFinanceiraService {
     }
 
 
+    @Transactional
     public void excluir(Integer id) {
         if (movimentoFinanceiroRepository.existsByCategoriaFinanceiraId(id)) {
             throw new RuntimeException("Nao foi possivel excluir");
@@ -44,12 +48,14 @@ public class CategoriaFinanceiraService {
         categoriaFinanceiraRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
     public CategoriaFinanceiraResponse buscarPorId(Integer id) {
         Optional<CategoriaFinanceira> objetoBuscado = categoriaFinanceiraRepository.findById(id);
         CategoriaFinanceira categoriaFinanceira = objetoBuscado.orElseThrow(() -> new RuntimeException("CategoriaFinanceira não encontrado"));
         return categoriaFinanceiraMapper.toResponse(categoriaFinanceira);
     }
 
+    @Transactional
     public CategoriaFinanceiraResponse atualizar(Integer id, CategoriaFinanceiraRequest dados) {
         CategoriaFinanceira categoriaFinanceira = categoriaFinanceiraRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Categoria Financeira nao existente"));

@@ -5,6 +5,7 @@ import com.ChaveMestra.Application.mapper.CategoriaMapper;
 import com.ChaveMestra.Application.model.Categoria;
 import com.ChaveMestra.Application.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.ChaveMestra.Application.repository.CategoriaRepository;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class CategoriaService {
         this.produtoRepository = produtoRepository;
     }
 
+    @Transactional
     public CategoriaResponse cadastrar(CategoriaRequest request)
     {
         Categoria categoria = categoriaMapper.toCategoria(request);
@@ -32,6 +34,7 @@ public class CategoriaService {
         return categoriaMapper.toResponse(categoriaSalva);
     }
 
+    @Transactional(readOnly = true)
     public List<CategoriaResponse> listar(){
         List<CategoriaResponse> listCategoriaResponse =  categoriaRepository.findAll().stream()
                 .map(categoria -> categoriaMapper.toResponse(categoria))
@@ -39,6 +42,7 @@ public class CategoriaService {
         return listCategoriaResponse;
     }
 
+    @Transactional
     public void excluir(Integer id) {
         if (produtoRepository.existsByCategoriaId(id)) {
             throw new RuntimeException("Nao foi possivel excluir");
@@ -46,6 +50,7 @@ public class CategoriaService {
         categoriaRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
     public CategoriaResponse buscarPorId(Integer id) {
         Optional<Categoria> objetoBuscado = categoriaRepository.findById(id);
         Categoria categoria = objetoBuscado.orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
@@ -53,6 +58,7 @@ public class CategoriaService {
     }
 
 
+        @Transactional
         public CategoriaResponse atualizar(Integer id, CategoriaRequest dados) {
             Categoria categoria = categoriaRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Categoria nao existente"));
@@ -62,7 +68,6 @@ public class CategoriaService {
             return categoriaMapper.toResponse(categoria);
         }
     }
-
 
 
 

@@ -7,6 +7,7 @@ import com.ChaveMestra.Application.model.Cliente;
 import com.ChaveMestra.Application.repository.AtendimentoRepository;
 import com.ChaveMestra.Application.repository.ClienteRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,17 +28,20 @@ public class ClienteService {
         this.atendimentoRepository = atendimentoRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<ClienteResponse> listar() {
         List<ClienteResponse> listClienteResponse = clienteRepository.findAll().stream().map(cliente -> clienteMapper.toResponse(cliente)).collect(Collectors.toList());
         return listClienteResponse;
     }
 
+    @Transactional
     public ClienteResponse cadastrar(ClienteRequest request) {
         Cliente cliente = clienteMapper.toCliente(request);
         Cliente clienteSalvo = clienteRepository.save(cliente);
         return clienteMapper.toResponse(clienteSalvo);
     }
 
+    @Transactional
     public void excluir(Integer id) {
         if (atendimentoRepository.existsByClienteId(id)) {
             throw new RuntimeException("Não foi possível excluir - cliente possui atendimentos vinculados");
@@ -45,12 +49,14 @@ public class ClienteService {
         clienteRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
     public ClienteResponse buscarPorId(Integer id) {
         Optional<Cliente> objetoBuscado = clienteRepository.findById(id);
         Cliente cliente = objetoBuscado.orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
         return clienteMapper.toResponse(cliente);
     }
 
+    @Transactional
     public ClienteResponse atualizar(Integer id, ClienteRequest dados) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
