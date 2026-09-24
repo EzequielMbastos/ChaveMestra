@@ -1,5 +1,8 @@
 package com.ChaveMestra.Application.service;
 
+import com.ChaveMestra.Application.dto.ProdutoRequest;
+import com.ChaveMestra.Application.dto.ProdutoResponse;
+import com.ChaveMestra.Application.mapper.ProdutoMapper;
 import com.ChaveMestra.Application.model.Categoria;
 import com.ChaveMestra.Application.model.Fornecedor;
 import com.ChaveMestra.Application.model.Produto;
@@ -7,6 +10,7 @@ import com.ChaveMestra.Application.repository.CategoriaRepository;
 import com.ChaveMestra.Application.repository.FornecedorRepository;
 import com.ChaveMestra.Application.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,65 +20,77 @@ public class ProdutoService {
     private final ProdutoRepository produtoRepository;
     private final CategoriaRepository categoriaRepository;
     private final FornecedorRepository fornecedorRepository;
+    private final ProdutoMapper produtoMapper;
 
     public ProdutoService(ProdutoRepository produtoRepository,
                           CategoriaRepository categoriaRepository,
-                          FornecedorRepository fornecedorRepository) {
+                          FornecedorRepository fornecedorRepository,
+                          ProdutoMapper produtoMapper) {
         this.produtoRepository = produtoRepository;
         this.categoriaRepository = categoriaRepository;
         this.fornecedorRepository = fornecedorRepository;
+        this.produtoMapper = produtoMapper;
     }
 
-    public Produto cadastrar(Produto produto) {
-        // Busca a categoria REAL do banco — não confia no objeto do request
-        Categoria categoria = categoriaRepository.findById(produto.getCategoria().getId())
+    @Transactional
+    public ProdutoResponse cadastrar(ProdutoRequest request) {
+        Produto produto = produtoMapper.toEntity(request);
+
+        Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
         produto.setCategoria(categoria);
 
-        // Busca o fornecedor se vier preenchido
-        if (produto.getFornecedor() != null && produto.getFornecedor().getId() != null) {
-            Fornecedor fornecedor = fornecedorRepository.findById(produto.getFornecedor().getId())
+        if (request.fornecedorId() != null) {
+            Fornecedor fornecedor = fornecedorRepository.findById(request.fornecedorId())
                     .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado"));
             produto.setFornecedor(fornecedor);
         }
 
-        return produtoRepository.save(produto);
+        Produto salvo = produtoRepository.save(produto);
+        return produtoMapper.toResponse(salvo);
     }
 
-    public List<Produto> listar() {
-        return produtoRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listar() {
+        return produtoRepository.findAll()
+                .stream()
+                .map(produtoMapper::toResponse)
+                .toList();
     }
 
-    public Produto buscarPorId(Integer id) {
-        return produtoRepository.findById(id)
+    @Transactional(readOnly = true)
+    public ProdutoResponse buscarPorId(Integer id) {
+        Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+        return produtoMapper.toResponse(produto);
     }
 
-    public Produto atualizar(Integer id, Produto dados) {
+    @Transactional
+    public ProdutoResponse atualizar(Integer id, ProdutoRequest request) {
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
 
-        // Busca a categoria REAL do banco
-        Categoria categoria = categoriaRepository.findById(dados.getCategoria().getId())
+        Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
 
-        // Busca o fornecedor (opcional)
         Fornecedor fornecedor = null;
-        if (dados.getFornecedor() != null && dados.getFornecedor().getId() != null) {
-            fornecedor = fornecedorRepository.findById(dados.getFornecedor().getId())
+        if (request.fornecedorId() != null) {
+            fornecedor = fornecedorRepository.findById(request.fornecedorId())
                     .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado"));
         }
 
-        produto.setCodigoCatalogo(dados.getCodigoCatalogo());
-        produto.setNome(dados.getNome());
-        produto.setPrecoVenda(dados.getPrecoVenda());
-        produto.setPrecoCusto(dados.getPrecoCusto());
-        produto.setCategoria(categoria);       // objeto gerenciado pelo Hibernate
+        produto.setCodigoCatalogo(request.codigoCatalogo());
+        produto.setNome(request.nome());
+        produto.setPrecoVenda(request.precoVenda());
+        produto.setPrecoCusto(request.precoCusto());
+        produto.setCategoria(categoria);
         produto.setFornecedor(fornecedor);
 
-        return produtoRepository.save(produto);
+        Produto atualizado = produtoRepository.save(produto);
+        return produtoMapper.toResponse(atualizado);
     }
 
+    @Transactional
     public void excluir(Integer id) {
         if (!produtoRepository.existsById(id)) {
             throw new RuntimeException("Produto não encontrado");

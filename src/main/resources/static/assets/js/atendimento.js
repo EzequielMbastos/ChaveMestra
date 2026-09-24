@@ -49,8 +49,8 @@ function buscarItens(tipo, termo, container, campo) {
   const timer = tipo === 'PRODUTO' ? timerBuscaProduto : timerBuscaServico;
   const timeout = setTimeout(async () => {
     const resultados = tipo === 'PRODUTO'
-      ? (await apiGet(`/produtos?nome=${termo}`)).map(p => ({ ...p, tipo: 'PRODUTO', nome_exibicao: p.nome, preco: p.preco_venda }))
-      : (await apiGet(`/servicos?nome=${termo}`)).map(s => ({ ...s, tipo: 'SERVICO', nome_exibicao: s.nome, preco: s.preco_base }));
+      ? (await apiGet(`/produtos?nome=${encodeURIComponent(termo)}`)).map(p => ({ ...p, tipo: 'PRODUTO', nome_exibicao: p.nome, preco: p.precoVenda }))
+      : (await apiGet(`/servicos?nome=${encodeURIComponent(termo)}`)).map(s => ({ ...s, tipo: 'SERVICO', nome_exibicao: s.nome, preco: s.precoBase }));
 
     renderizarSugestoes(resultados, container, tipo);
   }, 300);
@@ -192,7 +192,7 @@ document.getElementById('salvar-produto-rapido').addEventListener('click', async
     const novo = await apiPost('/produtos', { nome, codigo_catalogo: codigo, preco_venda: preco, estoque_atual: estoque });
     mostrarToast('Produto cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoProduto')).hide();
-    adicionarItem({ ...novo, tipo: 'PRODUTO', nome_exibicao: novo.nome, preco: novo.preco_venda });
+    adicionarItem({ ...novo, tipo: 'PRODUTO', nome_exibicao: novo.nome, preco: novo.precoVenda });
   } catch (erro) {
     mostrarToast('Erro ao cadastrar produto.', 'danger');
   }
@@ -212,7 +212,7 @@ document.getElementById('salvar-servico-rapido').addEventListener('click', async
     const novo = await apiPost('/servicos', { nome, preco_base: preco });
     mostrarToast('Serviço cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoServico')).hide();
-    adicionarItem({ ...novo, tipo: 'SERVICO', nome_exibicao: novo.nome, preco: novo.preco_base });
+    adicionarItem({ ...novo, tipo: 'SERVICO', nome_exibicao: novo.nome, preco: novo.precoBase });
   } catch (erro) {
     mostrarToast('Erro ao cadastrar serviço.', 'danger');
   }

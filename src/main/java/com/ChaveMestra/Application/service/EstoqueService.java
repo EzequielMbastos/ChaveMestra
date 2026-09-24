@@ -2,6 +2,8 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.EstoqueRequest;
 import com.ChaveMestra.Application.dto.EstoqueResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.EstoqueMapper;
 import com.ChaveMestra.Application.model.Estoque;
 import com.ChaveMestra.Application.model.Produto;
@@ -38,17 +40,20 @@ public class EstoqueService {
     @Transactional(readOnly = true)
     public EstoqueResponse buscarPorId(Integer id) {
         Estoque estoque = estoqueRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Estoque não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estoque não encontrado"));
         return estoqueMapper.toResponse(estoque);
     }
 
     @Transactional
     public EstoqueResponse cadastrar(EstoqueRequest request) {
+        if (request.quantidade() < 0 || request.minimo() < 0) {
+            throw new BusinessException("Quantidade e mínimo do estoque não podem ser negativos");
+        }
         Produto produto = produtoRepository.findById(request.produtoId())
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
 
         if (estoqueRepository.findByProdutoId(produto.getId()).isPresent()) {
-            throw new RuntimeException("Já existe estoque para este produto");
+            throw new BusinessException("Já existe estoque para este produto");
         }
 
         Estoque estoque = estoqueMapper.toEntity(request, produto);
@@ -58,16 +63,19 @@ public class EstoqueService {
 
     @Transactional
     public EstoqueResponse atualizar(Integer id, EstoqueRequest request) {
+        if (request.quantidade() < 0 || request.minimo() < 0) {
+            throw new BusinessException("Quantidade e mínimo do estoque não podem ser negativos");
+        }
         Estoque estoque = estoqueRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Estoque não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estoque não encontrado"));
 
         Produto produto = produtoRepository.findById(request.produtoId())
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
 
         // Só valida duplicidade se o produto mudou
         if (!estoque.getProduto().getId().equals(produto.getId())) {
             if (estoqueRepository.findByProdutoId(produto.getId()).isPresent()) {
-                throw new RuntimeException("Já existe estoque para este produto");
+                throw new BusinessException("Já existe estoque para este produto");
             }
         }
 
@@ -82,7 +90,7 @@ public class EstoqueService {
     @Transactional
     public void excluir(Integer id) {
         if (!estoqueRepository.existsById(id)) {
-            throw new RuntimeException("Estoque não encontrado");
+            throw new ResourceNotFoundException("Estoque não encontrado");
         }
         estoqueRepository.deleteById(id);
     }
