@@ -40,7 +40,7 @@ public class ClienteService {
 
     public void excluir(Integer id) {
         if (atendimentoRepository.existsByClienteId(id)) {
-            throw new RuntimeException("Nao foi possivel excluir");
+            throw new RuntimeException("Não foi possível excluir - cliente possui atendimentos vinculados");
         }
         clienteRepository.deleteById(id);
     }
@@ -53,7 +53,7 @@ public class ClienteService {
 
     public ClienteResponse atualizar(Integer id, ClienteRequest dados) {
         Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cliente nao existente"));
+                .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
         cliente.setNome(dados.nome());
         cliente.setCpf(dados.cpf());
         cliente.setTelefone(dados.telefone());
