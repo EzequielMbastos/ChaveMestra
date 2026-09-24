@@ -3,7 +3,7 @@ const API = {
   clientes:              '/clientes',
   fornecedores:          '/fornecedores',
   categorias:            '/categorias',
-  categoriasFinanceiras: '/categoria-financeira',  // singular!
+  categoriasFinanceiras: '/categorias-financeiras',
   produtos:              '/produtos',
   servicos:              '/servicos',
   estoques:              '/estoques',

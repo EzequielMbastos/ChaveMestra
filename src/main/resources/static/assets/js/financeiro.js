@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   campoTipo.addEventListener('change', atualizarPessoaObrigatoria);
 
   async function carregarFinanceiro() {
-    const itens = await apiGet('/financeiro');
+    const itens = await apiGet('/movimentos-financeiros');
     const entradas = itens.filter(item => item.tipo === 'ENTRADA').reduce((soma, item) => soma + Number(item.valor || 0), 0);
     const saidas = itens.filter(item => item.tipo === 'SAIDA').reduce((soma, item) => soma + Number(item.valor || 0), 0);
     const saldo = entradas - saidas;
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = Number(botao.dataset.excluir);
         if (!confirm('Deseja excluir esta movimentação?')) return;
 
-        await apiDelete(`/financeiro/${id}`);
+        await apiDelete(`/movimentos-financeiros/${id}`);
         mostrarToast('Movimentação excluída.', 'success');
         carregarFinanceiro();
       });
@@ -104,10 +104,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (id) {
-      await apiPut(`/financeiro/${id}`, payload);
+      await apiPut(`/movimentos-financeiros/${id}`, payload);
       mostrarToast('Movimentação atualizada.', 'success');
     } else {
-      await apiPost('/financeiro', payload);
+      await apiPost('/movimentos-financeiros', payload);
       mostrarToast('Movimentação cadastrada.', 'success');
     }
 
