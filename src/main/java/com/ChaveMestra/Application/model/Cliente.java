@@ -22,6 +22,9 @@ public class Cliente {
     @Column(name = "endereco", columnDefinition = "TEXT")
     private String endereco;
 
+    @Column(length = 2)
+    private String estado;
+
     public Integer getId() {
         return id;
     }
@@ -60,5 +63,13 @@ public class Cliente {
 
     public void setTelefone(String telefone) {
         this.telefone = telefone;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
 }
