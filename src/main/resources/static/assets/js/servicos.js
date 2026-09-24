@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tbody.innerHTML = filtrados.map(servico => `
       <tr>
         <td>${servico.nome}</td>
-        <td>${formatarMoeda(servico.preco_base)}</td>
+        <td>${formatarMoeda(servico.precoBase)}</td>
         <td><span class="badge bg-success">Ativo</span></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary me-2" data-editar="${servico.id}"><i class="bi bi-pencil"></i></button>
