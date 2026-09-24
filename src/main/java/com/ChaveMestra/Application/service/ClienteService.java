@@ -2,6 +2,8 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.ClienteRequest;
 import com.ChaveMestra.Application.dto.ClienteResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.ClienteMapper;
 import com.ChaveMestra.Application.model.Cliente;
 import com.ChaveMestra.Application.repository.AtendimentoRepository;
@@ -43,8 +45,11 @@ public class ClienteService {
 
     @Transactional
     public void excluir(Integer id) {
+        if (!clienteRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Cliente não encontrado");
+        }
         if (atendimentoRepository.existsByClienteId(id)) {
-            throw new RuntimeException("Não foi possível excluir - cliente possui atendimentos vinculados");
+            throw new BusinessException("Não foi possível excluir - cliente possui atendimentos vinculados");
         }
         clienteRepository.deleteById(id);
     }
@@ -52,14 +57,14 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public ClienteResponse buscarPorId(Integer id) {
         Optional<Cliente> objetoBuscado = clienteRepository.findById(id);
-        Cliente cliente = objetoBuscado.orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
+        Cliente cliente = objetoBuscado.orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado"));
         return clienteMapper.toResponse(cliente);
     }
 
     @Transactional
     public ClienteResponse atualizar(Integer id, ClienteRequest dados) {
         Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado"));
         cliente.setNome(dados.nome());
         cliente.setCpf(dados.cpf());
         cliente.setTelefone(dados.telefone());

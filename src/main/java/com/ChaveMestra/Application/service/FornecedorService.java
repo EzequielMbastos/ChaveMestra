@@ -2,6 +2,8 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.FornecedorRequest;
 import com.ChaveMestra.Application.dto.FornecedorResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.FornecedorMapper;
 import com.ChaveMestra.Application.model.Fornecedor;
 import com.ChaveMestra.Application.repository.ProdutoRepository;
@@ -43,8 +45,11 @@ public class FornecedorService{
 
     @Transactional
     public void excluir(Integer id) {
+        if (!fornecedorRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Fornecedor não encontrado");
+        }
         if (produtoRepository.existsByFornecedorId(id)) {
-            throw new RuntimeException("Nao foi possivel excluir");
+            throw new BusinessException("Não foi possível excluir o fornecedor com produtos vinculados");
         }
         fornecedorRepository.deleteById(id);
     }
@@ -52,14 +57,14 @@ public class FornecedorService{
     @Transactional(readOnly = true)
     public FornecedorResponse buscarPorId(Integer id) {
         Optional<Fornecedor> objetoBuscado = fornecedorRepository.findById(id);
-        Fornecedor fornecedor = objetoBuscado.orElseThrow(() -> new RuntimeException("Fornecedor não encontrado"));
+        Fornecedor fornecedor = objetoBuscado.orElseThrow(() -> new ResourceNotFoundException("Fornecedor não encontrado"));
         return fornecedorMapper.toResponse(fornecedor);
     }
 
     @Transactional
     public FornecedorResponse atualizar(Integer id, FornecedorRequest dados) {
         Fornecedor fornecedor = fornecedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Fornecedor nao existente"));
+                .orElseThrow(() -> new ResourceNotFoundException("Fornecedor não encontrado"));
         fornecedor.setNome(dados.nome());
         fornecedor.setCnpj(dados.cnpj());
         fornecedor.setTelefone(dados.telefone());

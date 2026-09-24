@@ -1,6 +1,8 @@
 package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.*;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.model.*;
 import com.ChaveMestra.Application.mapper.CategoriaFinanceiraMapper;
 import com.ChaveMestra.Application.repository.CategoriaFinanceiraRepository;
@@ -42,8 +44,11 @@ public class CategoriaFinanceiraService {
 
     @Transactional
     public void excluir(Integer id) {
+        if (!categoriaFinanceiraRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Categoria financeira não encontrada");
+        }
         if (movimentoFinanceiroRepository.existsByCategoriaFinanceiraId(id)) {
-            throw new RuntimeException("Nao foi possivel excluir");
+            throw new BusinessException("Não foi possível excluir a categoria financeira com movimentos vinculados");
         }
         categoriaFinanceiraRepository.deleteById(id);
     }
@@ -51,14 +56,14 @@ public class CategoriaFinanceiraService {
     @Transactional(readOnly = true)
     public CategoriaFinanceiraResponse buscarPorId(Integer id) {
         Optional<CategoriaFinanceira> objetoBuscado = categoriaFinanceiraRepository.findById(id);
-        CategoriaFinanceira categoriaFinanceira = objetoBuscado.orElseThrow(() -> new RuntimeException("CategoriaFinanceira não encontrado"));
+        CategoriaFinanceira categoriaFinanceira = objetoBuscado.orElseThrow(() -> new ResourceNotFoundException("Categoria financeira não encontrada"));
         return categoriaFinanceiraMapper.toResponse(categoriaFinanceira);
     }
 
     @Transactional
     public CategoriaFinanceiraResponse atualizar(Integer id, CategoriaFinanceiraRequest dados) {
         CategoriaFinanceira categoriaFinanceira = categoriaFinanceiraRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoria Financeira nao existente"));
+                .orElseThrow(() -> new ResourceNotFoundException("Categoria financeira não encontrada"));
         categoriaFinanceira.setNome(dados.nome());
         categoriaFinanceira.setTipo(dados.tipo());
         categoriaFinanceira.setDescricao(dados.descricao());

@@ -2,6 +2,8 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.ServicoRequest;
 import com.ChaveMestra.Application.dto.ServicoResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.ServicoMapper;
 import com.ChaveMestra.Application.model.Servico;
 import com.ChaveMestra.Application.repository.AtendimentoItemRepository;
@@ -44,8 +46,11 @@ public class ServicoService {
 
     @Transactional
     public void excluir(Integer id) {
+        if (!servicoRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Serviço não encontrado");
+        }
         if (atendimentoItemRepository.existsByServicoId(id)) {
-            throw new RuntimeException("Nao foi possivel excluir");
+            throw new BusinessException("Não foi possível excluir o serviço com atendimentos vinculados");
         }
         servicoRepository.deleteById(id);
     }
@@ -53,14 +58,14 @@ public class ServicoService {
     @Transactional(readOnly = true)
     public ServicoResponse buscarPorId(Integer id) {
         Optional<Servico> objetoBuscado = servicoRepository.findById(id);
-        Servico servico = objetoBuscado.orElseThrow(() -> new RuntimeException("Servico não encontrado"));
+        Servico servico = objetoBuscado.orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
         return servicoMapper.toResponse(servico);
     }
 
     @Transactional
     public ServicoResponse atualizar(Integer id, ServicoRequest dados) {
         Servico servico = servicoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Servico nao existente"));
+                .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
         servico.setNome(dados.nome());
         servico.setDescricao(dados.descricao());
         servico.setPrecoBase(dados.precoBase());
