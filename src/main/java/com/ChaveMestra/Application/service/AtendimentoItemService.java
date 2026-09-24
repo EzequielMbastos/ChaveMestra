@@ -2,6 +2,8 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.AtendimentoItemRequest;
 import com.ChaveMestra.Application.dto.AtendimentoItemResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.AtendimentoItemMapper;
 import com.ChaveMestra.Application.model.Atendimento;
 import com.ChaveMestra.Application.model.AtendimentoItem;
@@ -16,6 +18,7 @@ import com.ChaveMestra.Application.repository.ServicoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -65,42 +68,32 @@ public class AtendimentoItemService {
         Atendimento atendimento = atendimentoRepository.findById(request.atendimentoId())
                 .orElseThrow(() -> new RuntimeException("Atendimento não encontrado"));
 
-        Produto produto = null;
-        Servico servico = null;
+        AtendimentoItem item = new AtendimentoItem();
+        item.setAtendimento(atendimento);
+        item.setQuantidade(request.quantidade());
+        item.setDesconto(request.desconto());
+        item.setTipo(request.tipo());
+        item.setObservacao(request.observacao());
 
         if ("produto".equalsIgnoreCase(request.tipo())) {
             if (request.produtoId() == null) {
                 throw new RuntimeException("produtoId é obrigatório quando tipo = 'produto'");
             }
-            produto = produtoRepository.findById(request.produtoId())
-                    .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
-
-            // Verificar e baixar estoque
-            Estoque estoque = estoqueRepository.findByProdutoId(produto.getId())
-                    .orElseThrow(() -> new RuntimeException("Estoque não encontrado para este produto"));
-
-            if (estoque.getQuantidade() < request.quantidade()) {
-                throw new RuntimeException("Estoque insuficiente. Disponível: " + estoque.getQuantidade() + ", solicitado: " + request.quantidade());
-            }
-
-            estoqueRepository.baixarEstoque(produto.getId(), request.quantidade());
-
+            item.setServico(null);
+            item.setProduto(produtoRepository.findById(request.produtoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado")));
         } else if ("servico".equalsIgnoreCase(request.tipo())) {
             if (request.servicoId() == null) {
                 throw new RuntimeException("servicoId é obrigatório quando tipo = 'servico'");
             }
-            servico = servicoRepository.findById(request.servicoId())
-                    .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
-
+            item.setProduto(null);
+            item.setServico(servicoRepository.findById(request.servicoId())
+                    .orElseThrow(() -> new RuntimeException("Serviço não encontrado")));
         } else {
-            throw new RuntimeException("tipo deve ser 'produto' ou 'servico'");
+            throw new BusinessException("tipo deve ser 'produto' ou 'servico'");
         }
 
-        AtendimentoItem item = itemMapper.toEntity(
-                atendimento, produto, servico,
-                request.quantidade(), request.valorUnitario(),
-                request.desconto(), request.tipo(), request.observacao()
-        );
+        processarItem(item);
 
         AtendimentoItem salvo = itemRepository.save(item);
         atendimentoService.recalcularValorTotal(request.atendimentoId());
@@ -112,60 +105,43 @@ public class AtendimentoItemService {
         AtendimentoItem item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item de atendimento não encontrado"));
 
+        if (!item.getAtendimento().getId().equals(request.atendimentoId())) {
+            throw new BusinessException("Não é permitido transferir um item entre atendimentos");
+        }
+
         Atendimento atendimento = atendimentoRepository.findById(request.atendimentoId())
                 .orElseThrow(() -> new RuntimeException("Atendimento não encontrado"));
-
-        Produto produto = null;
-        Servico servico = null;
 
         // Se o item existente era produto, devolver a quantidade ao estoque antes de atualizar
         if ("produto".equalsIgnoreCase(item.getTipo()) && item.getProduto() != null) {
             estoqueRepository.adicionarEstoque(item.getProduto().getId(), item.getQuantidade());
         }
 
+        item.setAtendimento(atendimento);
+        item.setQuantidade(request.quantidade());
+        item.setDesconto(request.desconto());
+        item.setTipo(request.tipo());
+        item.setObservacao(request.observacao());
+
         if ("produto".equalsIgnoreCase(request.tipo())) {
             if (request.produtoId() == null) {
                 throw new RuntimeException("produtoId é obrigatório quando tipo = 'produto'");
             }
-            produto = produtoRepository.findById(request.produtoId())
-                    .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
-
-            // Verificar e baixar estoque com a nova quantidade
-            Estoque estoque = estoqueRepository.findByProdutoId(produto.getId())
-                    .orElseThrow(() -> new RuntimeException("Estoque não encontrado para este produto"));
-
-            if (estoque.getQuantidade() < request.quantidade()) {
-                throw new RuntimeException("Estoque insuficiente. Disponível: " + estoque.getQuantidade() + ", solicitado: " + request.quantidade());
-            }
-
-            estoqueRepository.baixarEstoque(produto.getId(), request.quantidade());
-
+            item.setServico(null);
+            item.setProduto(produtoRepository.findById(request.produtoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado")));
         } else if ("servico".equalsIgnoreCase(request.tipo())) {
             if (request.servicoId() == null) {
                 throw new RuntimeException("servicoId é obrigatório quando tipo = 'servico'");
             }
-            servico = servicoRepository.findById(request.servicoId())
-                    .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
-
+            item.setProduto(null);
+            item.setServico(servicoRepository.findById(request.servicoId())
+                    .orElseThrow(() -> new RuntimeException("Serviço não encontrado")));
         } else {
-            throw new RuntimeException("tipo deve ser 'produto' ou 'servico'");
+            throw new BusinessException("tipo deve ser 'produto' ou 'servico'");
         }
 
-        AtendimentoItem novosDados = itemMapper.toEntity(
-                atendimento, produto, servico,
-                request.quantidade(), request.valorUnitario(),
-                request.desconto(), request.tipo(), request.observacao()
-        );
-
-        item.setAtendimento(novosDados.getAtendimento());
-        item.setProduto(novosDados.getProduto());
-        item.setServico(novosDados.getServico());
-        item.setQuantidade(novosDados.getQuantidade());
-        item.setValorUnitario(novosDados.getValorUnitario());
-        item.setDesconto(novosDados.getDesconto());
-        item.setValorTotal(novosDados.getValorTotal());
-        item.setTipo(novosDados.getTipo());
-        item.setObservacao(novosDados.getObservacao());
+        processarItem(item);
 
         AtendimentoItem atualizado = itemRepository.save(item);
         atendimentoService.recalcularValorTotal(request.atendimentoId());
@@ -186,5 +162,45 @@ public class AtendimentoItemService {
 
         itemRepository.deleteById(id);
         atendimentoService.recalcularValorTotal(atendimentoId);
+    }
+
+    private void processarItem(AtendimentoItem item) {
+        boolean produtoSelecionado = "produto".equalsIgnoreCase(item.getTipo());
+        boolean servicoSelecionado = "servico".equalsIgnoreCase(item.getTipo());
+
+        if (!produtoSelecionado && !servicoSelecionado) {
+            throw new BusinessException("tipo deve ser 'produto' ou 'servico'");
+        }
+        if (produtoSelecionado && item.getProduto() == null) {
+            throw new ResourceNotFoundException("Produto não encontrado");
+        }
+        if (servicoSelecionado && item.getServico() == null) {
+            throw new ResourceNotFoundException("Serviço não encontrado");
+        }
+
+        BigDecimal valorUnitario;
+        if (produtoSelecionado) {
+            valorUnitario = item.getProduto().getPrecoVenda();
+            Estoque estoque = estoqueRepository.findByProdutoId(item.getProduto().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Estoque não encontrado para este produto"));
+
+            if (estoque.getQuantidade() < item.getQuantidade()) {
+                throw new BusinessException("Estoque insuficiente. Disponível: "
+                        + estoque.getQuantidade() + ", solicitado: " + item.getQuantidade());
+            }
+            estoqueRepository.baixarEstoque(item.getProduto().getId(), item.getQuantidade());
+        } else {
+            valorUnitario = item.getServico().getPrecoBase();
+        }
+
+        BigDecimal desconto = item.getDesconto() != null
+                ? item.getDesconto()
+                : BigDecimal.ZERO;
+        item.setDesconto(desconto);
+        item.setValorUnitario(valorUnitario);
+        item.setValorTotal(valorUnitario
+                .multiply(BigDecimal.valueOf(item.getQuantidade()))
+                .subtract(desconto));
     }
 }
