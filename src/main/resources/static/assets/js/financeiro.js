@@ -4,6 +4,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modal = document.getElementById('modalFinanceiro');
   const campoTipo = document.getElementById('financeiro-tipo');
   const campoPessoa = document.getElementById('financeiro-pessoa');
+  const campoCategoria = document.getElementById('financeiro-categoria');
+
+  async function carregarCategorias() {
+    const categorias = await apiGet('/categorias-financeiras');
+    campoCategoria.innerHTML = '<option value="">Selecione</option>' +
+      categorias
+        .map(categoria => `<option value="${categoria.id}">${categoria.nome}</option>`)
+        .join('');
+  }
 
   function atualizarPessoaObrigatoria() {
     const tipo = campoTipo.value;
@@ -33,10 +42,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td>
           <span class="badge ${item.tipo === 'ENTRADA' ? 'bg-success' : 'bg-danger'}">${item.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}</span>
         </td>
-        <td>${item.categoria || '-'}</td>
-        <td>${item.pessoa || '-'}</td>
+        <td>${item.categoriaFinanceiraNome || '-'}</td>
+        <td>${item.nome || '-'}</td>
         <td>${item.descricao}</td>
-        <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
+        <td>${item.vencimento ? new Date(`${item.vencimento}T00:00:00`).toLocaleDateString('pt-BR') : '-'}</td>
         <td class="fw-bold ${item.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'}">${formatarMoeda(item.valor)}</td>
         <td><span class="badge ${item.status === 'PAGO' ? 'bg-success' : 'bg-warning text-dark'}">${item.status}</span></td>
         <td class="text-end">
@@ -53,11 +62,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('financeiro-id').value = item.id;
         document.getElementById('financeiro-tipo').value = item.tipo;
-        document.getElementById('financeiro-categoria').value = item.categoria;
-        document.getElementById('financeiro-pessoa').value = item.pessoa || '';
+        document.getElementById('financeiro-categoria').value = item.categoriaFinanceiraId;
+        document.getElementById('financeiro-pessoa').value = item.nome || '';
         document.getElementById('financeiro-descricao').value = item.descricao;
         document.getElementById('financeiro-valor').value = item.valor;
-        document.getElementById('financeiro-data').value = item.data_vencimento;
+        document.getElementById('financeiro-data').value = item.vencimento;
         document.getElementById('financeiro-status').value = item.status;
 
         atualizarPessoaObrigatoria();
@@ -85,11 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pessoa = tipo === 'SAIDA' ? document.getElementById('financeiro-pessoa').value : '';
     const payload = {
       tipo,
-      categoria: document.getElementById('financeiro-categoria').value.trim(),
+      categoriaFinanceiraId: Number(document.getElementById('financeiro-categoria').value),
       pessoa,
       descricao: document.getElementById('financeiro-descricao').value.trim(),
       valor: Number(document.getElementById('financeiro-valor').value),
-      data_vencimento: document.getElementById('financeiro-data').value,
+      vencimento: document.getElementById('financeiro-data').value,
       status: document.getElementById('financeiro-status').value
     };
 
@@ -98,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (!payload.categoria || !payload.descricao || payload.valor <= 0 || !payload.data_vencimento) {
+    if (!payload.categoriaFinanceiraId || !payload.descricao || payload.valor <= 0 || !payload.vencimento) {
       mostrarToast('Preencha todos os campos corretamente.', 'warning');
       return;
     }
@@ -114,6 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bootstrap.Modal.getInstance(modal).hide();
     form.reset();
     atualizarPessoaObrigatoria();
+    await carregarCategorias();
     carregarFinanceiro();
   });
 
@@ -124,5 +134,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   atualizarPessoaObrigatoria();
+  await carregarCategorias();
   carregarFinanceiro();
 });
