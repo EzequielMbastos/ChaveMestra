@@ -21,11 +21,11 @@ function renderizarSugestoes(itens, container, tipo) {
     const el = document.createElement('a');
     el.href = '#';
     el.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-    el.innerHTML = `<span>${tipo === 'PRODUTO' ? '📦' : '🔧'} ${item.nome_exibicao}</span><span class="badge bg-secondary rounded-pill">${formatarMoeda(item.preco)}</span>`;
+    el.innerHTML = `<span>${tipo === 'produto' ? '📦' : '🔧'} ${item.nome_exibicao}</span><span class="badge bg-secondary rounded-pill">${formatarMoeda(item.preco)}</span>`;
     el.addEventListener('click', (e) => {
       e.preventDefault();
       adicionarItem(item);
-      if (tipo === 'PRODUTO') {
+      if (tipo === 'produto') {
         campoBuscaProduto.value = '';
         listaSugestoesProduto.classList.add('d-none');
       } else {
@@ -39,32 +39,32 @@ function renderizarSugestoes(itens, container, tipo) {
 }
 
 function buscarItens(tipo, termo, container, campo) {
-  clearTimeout(tipo === 'PRODUTO' ? timerBuscaProduto : timerBuscaServico);
+  clearTimeout(tipo === 'produto' ? timerBuscaProduto : timerBuscaServico);
   if (termo.length < 1) {
     container.innerHTML = '';
     container.classList.add('d-none');
     return;
   }
 
-  const timer = tipo === 'PRODUTO' ? timerBuscaProduto : timerBuscaServico;
+  const timer = tipo === 'produto' ? timerBuscaProduto : timerBuscaServico;
   const timeout = setTimeout(async () => {
-    const resultados = tipo === 'PRODUTO'
-      ? (await apiGet(`/produtos?nome=${encodeURIComponent(termo)}`)).map(p => ({ ...p, tipo: 'PRODUTO', nome_exibicao: p.nome, preco: p.precoVenda }))
-      : (await apiGet(`/servicos?nome=${encodeURIComponent(termo)}`)).map(s => ({ ...s, tipo: 'SERVICO', nome_exibicao: s.nome, preco: s.precoBase }));
+    const resultados = tipo === 'produto'
+      ? (await apiGet(`/produtos?nome=${encodeURIComponent(termo)}`)).map(p => ({ ...p, tipo: 'produto', nome_exibicao: p.nome, preco: p.precoVenda }))
+      : (await apiGet(`/servicos?nome=${encodeURIComponent(termo)}`)).map(s => ({ ...s, tipo: 'servico', nome_exibicao: s.nome, preco: s.precoBase }));
 
     renderizarSugestoes(resultados, container, tipo);
   }, 300);
 
-  if (tipo === 'PRODUTO') timerBuscaProduto = timeout;
+  if (tipo === 'produto') timerBuscaProduto = timeout;
   else timerBuscaServico = timeout;
 }
 
 campoBuscaProduto.addEventListener('input', () => {
-  buscarItens('PRODUTO', campoBuscaProduto.value.trim(), listaSugestoesProduto, campoBuscaProduto);
+  buscarItens('produto', campoBuscaProduto.value.trim(), listaSugestoesProduto, campoBuscaProduto);
 });
 
 campoBuscaServico.addEventListener('input', () => {
-  buscarItens('SERVICO', campoBuscaServico.value.trim(), listaSugestoesServico, campoBuscaServico);
+  buscarItens('servico', campoBuscaServico.value.trim(), listaSugestoesServico, campoBuscaServico);
 });
 
 // Fechar sugestões ao clicar fora
@@ -98,7 +98,7 @@ function atualizarTabela() {
     total += subtotal;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><span class="badge ${item.tipo === 'PRODUTO' ? 'bg-primary' : 'bg-warning text-dark'}">${item.tipo === 'PRODUTO' ? 'Prod' : 'Serv'}</span></td>
+      <td><span class="badge ${item.tipo === 'produto' ? 'bg-primary' : 'bg-warning text-dark'}">${item.tipo === 'produto' ? 'Prod' : 'Serv'}</span></td>
       <td>${item.nome_exibicao}</td>
       <td>${formatarMoeda(item.preco)}</td>
       <td>
@@ -144,7 +144,8 @@ document.getElementById('btn-finalizar').addEventListener('click', async () => {
       preco_unitario: i.preco
     })),
     forma_pagamento: formaPagamento,
-    cliente_id: clienteAtual ? clienteAtual.id : null
+    cliente_id: clienteAtual ? clienteAtual.id : null,
+    desconto: 0
   };
 
   try {
@@ -192,7 +193,7 @@ document.getElementById('salvar-produto-rapido').addEventListener('click', async
     const novo = await apiPost('/produtos', { nome, codigo_catalogo: codigo, preco_venda: preco, estoque_atual: estoque });
     mostrarToast('Produto cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoProduto')).hide();
-    adicionarItem({ ...novo, tipo: 'PRODUTO', nome_exibicao: novo.nome, preco: novo.precoVenda });
+    adicionarItem({ ...novo, tipo: 'produto', nome_exibicao: novo.nome, preco: novo.precoVenda });
   } catch (erro) {
     mostrarToast('Erro ao cadastrar produto.', 'danger');
   }
@@ -212,7 +213,7 @@ document.getElementById('salvar-servico-rapido').addEventListener('click', async
     const novo = await apiPost('/servicos', { nome, preco_base: preco });
     mostrarToast('Serviço cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoServico')).hide();
-    adicionarItem({ ...novo, tipo: 'SERVICO', nome_exibicao: novo.nome, preco: novo.precoBase });
+    adicionarItem({ ...novo, tipo: 'servico', nome_exibicao: novo.nome, preco: novo.precoBase });
   } catch (erro) {
     mostrarToast('Erro ao cadastrar serviço.', 'danger');
   }
