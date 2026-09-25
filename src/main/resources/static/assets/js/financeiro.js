@@ -27,10 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function carregarFinanceiro() {
     const itens = await apiGet('/movimentos-financeiros');
-    const entradas = itens.filter(item => item.tipo === 'ENTRADA').reduce((soma, item) => soma + Number(item.valor || 0), 0);
-    const saidas = itens.filter(item => item.tipo === 'SAIDA').reduce((soma, item) => soma + Number(item.valor || 0), 0);
+    const entradas = itens.filter(item => item.tipo?.toUpperCase() === 'ENTRADA').reduce((soma, item) => soma + Number(item.valor || 0), 0);
+    const saidas = itens.filter(item => item.tipo?.toUpperCase() === 'SAIDA').reduce((soma, item) => soma + Number(item.valor || 0), 0);
     const saldo = entradas - saidas;
-    const pendentes = itens.filter(item => item.status !== 'PAGO').length;
+    const pendentes = itens.filter(item => item.status?.toUpperCase() === 'PENDENTE').length;
 
     document.getElementById('total-entradas').textContent = formatarMoeda(entradas);
     document.getElementById('total-saidas').textContent = formatarMoeda(saidas);
@@ -40,14 +40,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     tbody.innerHTML = itens.map(item => `
       <tr>
         <td>
-          <span class="badge ${item.tipo === 'ENTRADA' ? 'bg-success' : 'bg-danger'}">${item.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}</span>
+          <span class="badge ${item.tipo?.toUpperCase() === 'ENTRADA' ? 'bg-success' : 'bg-danger'}">${item.tipo?.toUpperCase() === 'ENTRADA' ? 'Entrada' : 'Saída'}</span>
         </td>
         <td>${item.categoriaFinanceiraNome || '-'}</td>
         <td>${item.nome || '-'}</td>
         <td>${item.descricao}</td>
         <td>${item.vencimento ? new Date(`${item.vencimento}T00:00:00`).toLocaleDateString('pt-BR') : '-'}</td>
-        <td class="fw-bold ${item.tipo === 'ENTRADA' ? 'text-success' : 'text-danger'}">${formatarMoeda(item.valor)}</td>
-        <td><span class="badge ${item.status === 'PAGO' ? 'bg-success' : 'bg-warning text-dark'}">${item.status}</span></td>
+        <td class="fw-bold ${item.tipo?.toUpperCase() === 'ENTRADA' ? 'text-success' : 'text-danger'}">${formatarMoeda(item.valor)}</td>
+        <td><span class="badge ${item.status?.toUpperCase() === 'PAGO' ? 'bg-success' : 'bg-warning text-dark'}">${item.status}</span></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary me-2" data-editar="${item.id}"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-sm btn-outline-danger" data-excluir="${item.id}"><i class="bi bi-trash"></i></button>
