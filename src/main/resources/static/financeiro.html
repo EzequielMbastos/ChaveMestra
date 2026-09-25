@@ -121,7 +121,9 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Categoria</label>
-              <input type="text" id="financeiro-categoria" class="form-control" placeholder="Ex.: Vendas, Boleto, Loja, Uso pessoal" required>
+              <select id="financeiro-categoria" class="form-select" required>
+                <option value="">Selecione</option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Pessoa / documento</label>
@@ -148,8 +150,8 @@
             <div class="mb-3 mt-3">
               <label class="form-label">Status</label>
               <select id="financeiro-status" class="form-select">
-                <option value="PENDENTE">Pendente</option>
-                <option value="PAGO">Pago</option>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
               </select>
             </div>
           </div>
