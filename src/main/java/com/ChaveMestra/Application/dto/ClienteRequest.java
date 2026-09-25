@@ -2,6 +2,7 @@ package com.ChaveMestra.Application.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record ClienteRequest(
         @NotBlank(message = "nome é obrigatório")
@@ -13,6 +14,9 @@ public record ClienteRequest(
 
         String telefone,
 
-        String endereco
+        String endereco,
+
+        @Size(max = 2, message = "estado deve ter no máximo 2 caracteres")
+        String estado
 ) {
 }

@@ -15,7 +15,8 @@ public class ClienteMapper {
                         cliente.getNome(),
                         cliente.getCpf(),
                         cliente.getTelefone(),
-                        cliente.getEndereco()
+                        cliente.getEndereco(),
+                        cliente.getEstado()
                 );
         return clienteResponse;
     }
@@ -26,9 +27,9 @@ public class ClienteMapper {
         cliente.setCpf(request.cpf());
         cliente.setEndereco(request.endereco());
         cliente.setTelefone(request.telefone());
+        cliente.setEstado(request.estado());
 
         return cliente;
     }
 }
-
 

@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td>${cliente.cpf}</td>
         <td>${cliente.telefone}</td>
         <td>${cliente.endereco}</td>
+        <td>${cliente.estado || ''}</td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary me-2" data-editar="${cliente.id}"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-sm btn-outline-danger" data-excluir="${cliente.id}"><i class="bi bi-trash"></i></button>
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('cliente-cpf').value = cliente.cpf;
         document.getElementById('cliente-telefone').value = cliente.telefone;
         document.getElementById('cliente-endereco').value = cliente.endereco;
+        document.getElementById('cliente-estado').value = cliente.estado || '';
 
         bootstrap.Modal.getOrCreateInstance(modal).show();
       });
@@ -61,7 +63,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       nome: document.getElementById('cliente-nome').value.trim(),
       cpf: document.getElementById('cliente-cpf').value.trim(),
       telefone: document.getElementById('cliente-telefone').value.trim(),
-      endereco: document.getElementById('cliente-endereco').value.trim()
+      endereco: document.getElementById('cliente-endereco').value.trim(),
+      estado: document.getElementById('cliente-estado').value.trim().toUpperCase()
     };
 
     if (!payload.nome || !payload.cpf || !payload.telefone || !payload.endereco) {
