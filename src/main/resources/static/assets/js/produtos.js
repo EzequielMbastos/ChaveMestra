@@ -306,11 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
          * PAYLOAD
          * ========================================================
          *
-         * O backend espera:
-         *
-         * categoria: {
-         *     id: 3
-         * }
+         * O backend espera o ID da categoria diretamente.
          *
          */
 
@@ -324,9 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           precoCusto: 0,
 
-          categoria: {
-            id: categoriaId
-          }
+          categoriaId: categoriaId
 
         };
 
