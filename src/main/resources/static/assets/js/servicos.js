@@ -54,10 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const id = document.getElementById('servico-id').value;
     const payload = {
       nome: document.getElementById('servico-nome').value.trim(),
-      preco_base: Number(document.getElementById('servico-preco').value)
+      precoBase: Number(document.getElementById('servico-preco').value)
     };
 
-    if (!payload.nome || payload.preco_base <= 0) {
+    if (!payload.nome || payload.precoBase <= 0) {
       mostrarToast('Preencha corretamente os campos do serviço.', 'warning');
       return;
     }
