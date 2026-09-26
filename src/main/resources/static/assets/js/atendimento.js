@@ -6,8 +6,21 @@ const campoBuscaProduto = document.getElementById('busca-produto');
 const campoBuscaServico = document.getElementById('busca-servico');
 const listaSugestoesProduto = document.getElementById('sugestoes-produto');
 const listaSugestoesServico = document.getElementById('sugestoes-servico');
+const categoriaProdutoRapido = document.getElementById('novo-produto-categoria');
 let timerBuscaProduto;
 let timerBuscaServico;
+
+async function carregarCategoriasProdutoRapido() {
+  const categorias = await apiGet('/categorias');
+  categoriaProdutoRapido.innerHTML = '<option value="">Selecione uma categoria</option>';
+
+  categorias.forEach(categoria => {
+    const option = document.createElement('option');
+    option.value = categoria.id;
+    option.textContent = categoria.nome;
+    categoriaProdutoRapido.appendChild(option);
+  });
+}
 
 function renderizarSugestoes(itens, container, tipo) {
   container.innerHTML = '';
@@ -183,14 +196,20 @@ document.getElementById('salvar-produto-rapido').addEventListener('click', async
   const nome = document.getElementById('novo-produto-nome').value.trim();
   const codigo = document.getElementById('novo-produto-codigo').value.trim();
   const preco = parseFloat(document.getElementById('novo-produto-preco').value);
-  const estoque = parseInt(document.getElementById('novo-produto-estoque').value);
-  if (!nome || !codigo || isNaN(preco) || isNaN(estoque) || preco <= 0 || estoque < 0) {
+  const categoriaId = Number(categoriaProdutoRapido.value);
+  if (!nome || !codigo || isNaN(preco) || preco <= 0 || !categoriaId) {
     mostrarToast('Preencha todos os campos corretamente.', 'warning');
     return;
   }
 
   try {
-    const novo = await apiPost('/produtos', { nome, codigo_catalogo: codigo, preco_venda: preco, estoque_atual: estoque });
+    const novo = await apiPost('/produtos', {
+      codigoCatalogo: codigo,
+      nome,
+      precoVenda: preco,
+      precoCusto: 0,
+      categoriaId
+    });
     mostrarToast('Produto cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoProduto')).hide();
     adicionarItem({ ...novo, tipo: 'produto', nome_exibicao: novo.nome, preco: novo.precoVenda });
@@ -210,7 +229,7 @@ document.getElementById('salvar-servico-rapido').addEventListener('click', async
   }
 
   try {
-    const novo = await apiPost('/servicos', { nome, preco_base: preco });
+    const novo = await apiPost('/servicos', { nome, precoBase: preco });
     mostrarToast('Serviço cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoServico')).hide();
     adicionarItem({ ...novo, tipo: 'servico', nome_exibicao: novo.nome, preco: novo.precoBase });
@@ -222,8 +241,11 @@ document.getElementById('salvar-servico-rapido').addEventListener('click', async
 // Limpar modais ao fechar
 document.getElementById('modalNovoProduto').addEventListener('hidden.bs.modal', function () {
   this.querySelectorAll('input').forEach(i => i.value = '');
+  categoriaProdutoRapido.value = '';
 });
 
 document.getElementById('modalNovoServico').addEventListener('hidden.bs.modal', function () {
   this.querySelectorAll('input').forEach(i => i.value = '');
 });
+
+carregarCategoriasProdutoRapido();

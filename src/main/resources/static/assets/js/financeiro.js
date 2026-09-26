@@ -5,11 +5,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   const campoTipo = document.getElementById('financeiro-tipo');
   const campoPessoa = document.getElementById('financeiro-pessoa');
   const campoCategoria = document.getElementById('financeiro-categoria');
+  let categoriasFinanceiras = [];
 
   async function carregarCategorias() {
-    const categorias = await apiGet('/categorias-financeiras');
-    campoCategoria.innerHTML = '<option value="">Selecione</option>' +
-      categorias
+    categoriasFinanceiras = await apiGet('/categorias-financeiras');
+    atualizarCategoriasDisponiveis();
+  }
+
+  function atualizarCategoriasDisponiveis() {
+    const tipoSelecionado = campoTipo.value.toLowerCase();
+    const categoriasFiltradas = categoriasFinanceiras.filter(
+      categoria => categoria.tipo.toLowerCase() === tipoSelecionado
+    );
+
+    campoCategoria.innerHTML = '<option value="">Selecione uma categoria</option>' +
+      categoriasFiltradas
         .map(categoria => `<option value="${categoria.id}">${categoria.nome}</option>`)
         .join('');
   }
@@ -23,7 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     campoPessoa.closest('.mb-3').style.display = obrigatorio ? 'block' : 'none';
   }
 
-  campoTipo.addEventListener('change', atualizarPessoaObrigatoria);
+  campoTipo.addEventListener('change', () => {
+    atualizarPessoaObrigatoria();
+    atualizarCategoriasDisponiveis();
+  });
 
   async function carregarFinanceiro() {
     const itens = await apiGet('/movimentos-financeiros');
@@ -62,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('financeiro-id').value = item.id;
         document.getElementById('financeiro-tipo').value = item.tipo;
+        atualizarCategoriasDisponiveis();
         document.getElementById('financeiro-categoria').value = item.categoriaFinanceiraId;
         document.getElementById('financeiro-pessoa').value = item.nome || '';
         document.getElementById('financeiro-descricao').value = item.descricao;
@@ -91,18 +105,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const id = document.getElementById('financeiro-id').value;
     const tipo = document.getElementById('financeiro-tipo').value;
-    const pessoa = tipo === 'SAIDA' ? document.getElementById('financeiro-pessoa').value : '';
+    const nome = tipo === 'SAIDA' ? document.getElementById('financeiro-pessoa').value : '';
     const payload = {
-      tipo,
       categoriaFinanceiraId: Number(document.getElementById('financeiro-categoria').value),
-      pessoa,
+      nome,
       descricao: document.getElementById('financeiro-descricao').value.trim(),
       valor: Number(document.getElementById('financeiro-valor').value),
       vencimento: document.getElementById('financeiro-data').value,
       status: document.getElementById('financeiro-status').value
     };
 
-    if (tipo === 'SAIDA' && !payload.pessoa) {
+    if (tipo === 'SAIDA' && !payload.nome) {
       mostrarToast('Para saídas, informe se foi CNPJ ou CPF.', 'warning');
       return;
     }
@@ -123,6 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bootstrap.Modal.getInstance(modal).hide();
     form.reset();
     atualizarPessoaObrigatoria();
+    atualizarCategoriasDisponiveis();
     await carregarCategorias();
     carregarFinanceiro();
   });
@@ -131,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     form.reset();
     document.getElementById('financeiro-id').value = '';
     atualizarPessoaObrigatoria();
+    atualizarCategoriasDisponiveis();
   });
 
   atualizarPessoaObrigatoria();

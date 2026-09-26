@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tbody.innerHTML = filtrados.map(produto => {
 
       const categoriaNome =
-          produto.categoria?.nome || 'Sem categoria';
+          produto.categoriaNome || 'Sem categoria';
 
       return `
         <tr>
@@ -148,16 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              * Seleciona a categoria do produto
              */
 
-            if (produto.categoria) {
-
-              selectCategoria.value =
-                  produto.categoria.id;
-
-            } else {
-
-              selectCategoria.value = '';
-
-            }
+            selectCategoria.value = produto.categoriaId || '';
 
 
             bootstrap.Modal
