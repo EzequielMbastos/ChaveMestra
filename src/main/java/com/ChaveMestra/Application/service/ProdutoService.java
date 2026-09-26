@@ -8,9 +8,7 @@ import com.ChaveMestra.Application.mapper.ProdutoMapper;
 import com.ChaveMestra.Application.model.Categoria;
 import com.ChaveMestra.Application.model.Fornecedor;
 import com.ChaveMestra.Application.model.Produto;
-import com.ChaveMestra.Application.repository.AtendimentoItemRepository;
 import com.ChaveMestra.Application.repository.CategoriaRepository;
-import com.ChaveMestra.Application.repository.EstoqueRepository;
 import com.ChaveMestra.Application.repository.FornecedorRepository;
 import com.ChaveMestra.Application.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
@@ -25,26 +23,21 @@ public class ProdutoService {
     private final CategoriaRepository categoriaRepository;
     private final FornecedorRepository fornecedorRepository;
     private final ProdutoMapper produtoMapper;
-    private final EstoqueRepository estoqueRepository;
-    private final AtendimentoItemRepository atendimentoItemRepository;
 
     public ProdutoService(ProdutoRepository produtoRepository,
                           CategoriaRepository categoriaRepository,
                           FornecedorRepository fornecedorRepository,
-                          ProdutoMapper produtoMapper,
-                          EstoqueRepository estoqueRepository,
-                          AtendimentoItemRepository atendimentoItemRepository) {
+                          ProdutoMapper produtoMapper) {
         this.produtoRepository = produtoRepository;
         this.categoriaRepository = categoriaRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.produtoMapper = produtoMapper;
-        this.estoqueRepository = estoqueRepository;
-        this.atendimentoItemRepository = atendimentoItemRepository;
     }
 
     @Transactional
     public ProdutoResponse cadastrar(ProdutoRequest request) {
         Produto produto = produtoMapper.toEntity(request);
+        produto.setAtivo(true);
 
         Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
@@ -62,7 +55,7 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listar() {
-        return produtoRepository.findAll()
+        return produtoRepository.findByAtivoTrue()
                 .stream()
                 .map(produtoMapper::toResponse)
                 .toList();
@@ -70,15 +63,15 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public ProdutoResponse buscarPorId(Integer id) {
-        Produto produto = produtoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+        Produto produto = produtoRepository.findByIdAndAtivoTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
         return produtoMapper.toResponse(produto);
     }
 
     @Transactional
     public ProdutoResponse atualizar(Integer id, ProdutoRequest request) {
-        Produto produto = produtoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+        Produto produto = produtoRepository.findByIdAndAtivoTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
 
         Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
@@ -102,15 +95,12 @@ public class ProdutoService {
 
     @Transactional
     public void excluir(Integer id) {
-        if (!produtoRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Produto não encontrado");
+        Produto produto = produtoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
+        if (Boolean.FALSE.equals(produto.getAtivo())) {
+            throw new BusinessException("Produto já está desativado");
         }
-        if (estoqueRepository.findByProdutoId(id).isPresent()) {
-            throw new BusinessException("Não foi possível excluir - produto possui estoque vinculado");
-        }
-        if (atendimentoItemRepository.existsByProdutoId(id)) {
-            throw new BusinessException("Não foi possível excluir - produto possui itens de atendimento vinculados");
-        }
-        produtoRepository.deleteById(id);
+        produto.setAtivo(false);
+        produtoRepository.save(produto);
     }
 }

@@ -18,7 +18,8 @@ public class ProdutoMapper {
                 produto.getCategoria() != null ? produto.getCategoria().getId() : null,
                 produto.getCategoria() != null ? produto.getCategoria().getNome() : null,
                 produto.getFornecedor() != null ? produto.getFornecedor().getId() : null,
-                produto.getFornecedor() != null ? produto.getFornecedor().getNome() : null
+                produto.getFornecedor() != null ? produto.getFornecedor().getNome() : null,
+                produto.getAtivo()
         );
     }
 
@@ -28,6 +29,7 @@ public class ProdutoMapper {
         produto.setNome(request.nome());
         produto.setPrecoVenda(request.precoVenda());
         produto.setPrecoCusto(request.precoCusto());
+        produto.setAtivo(true);
         return produto;
     }
 }

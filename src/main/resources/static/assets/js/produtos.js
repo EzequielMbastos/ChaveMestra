@@ -95,8 +95,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             <button
               class="btn btn-sm btn-outline-danger"
+              title="Desativar (produto some da lista, mas mantém histórico)"
+              aria-label="Desativar produto"
               data-excluir="${produto.id}">
-              <i class="bi bi-trash"></i>
+              <i class="bi bi-x-circle"></i> Desativar
             </button>
 
           </td>
@@ -180,14 +182,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const id = Number(botao.dataset.excluir);
 
-            if (!confirm('Deseja excluir este produto?')) {
+            if (!confirm('Deseja desativar este produto? Ele não aparecerá mais na lista, mas o histórico será mantido.')) {
               return;
             }
 
             await apiDelete(`/produtos/${id}`);
 
             mostrarToast(
-                'Produto excluído com sucesso!',
+                'Produto desativado com sucesso!',
                 'success'
             );
 

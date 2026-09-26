@@ -4,7 +4,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.ChaveMestra.Application.model.Produto;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface ProdutoRepository extends JpaRepository<Produto, Integer> {
+
+    List<Produto> findByAtivoTrue();
+
+    Optional<Produto> findByIdAndAtivoTrue(Integer id);
 
     boolean existsByCategoriaId(Integer categoriaId);
 
