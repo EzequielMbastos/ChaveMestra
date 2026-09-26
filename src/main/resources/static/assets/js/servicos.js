@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('servico-id').value = servico.id;
         document.getElementById('servico-nome').value = servico.nome;
-        document.getElementById('servico-preco').value = servico.preco_base;
+        document.getElementById('servico-preco').value = servico.precoBase;
 
         bootstrap.Modal.getOrCreateInstance(modal).show();
       });

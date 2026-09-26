@@ -50,7 +50,7 @@ function buscarItens(tipo, termo, container, campo) {
   const timeout = setTimeout(async () => {
     const resultados = tipo === 'produto'
       ? (await apiGet(`/produtos?nome=${encodeURIComponent(termo)}`)).map(p => ({ ...p, tipo: 'produto', nome_exibicao: p.nome, preco: p.precoVenda }))
-      : (await apiGet(`/servicos?nome=${encodeURIComponent(termo)}`)).map(s => ({ ...s, id: s.Id, tipo: 'servico', nome_exibicao: s.nome, preco: s.precoBase }));
+      : (await apiGet(`/servicos?nome=${encodeURIComponent(termo)}`)).map(s => ({ ...s, tipo: 'servico', nome_exibicao: s.nome, preco: s.precoBase }));
 
     renderizarSugestoes(resultados, container, tipo);
   }, 300);
@@ -213,7 +213,7 @@ document.getElementById('salvar-servico-rapido').addEventListener('click', async
     const novo = await apiPost('/servicos', { nome, preco_base: preco });
     mostrarToast('Serviço cadastrado com sucesso!', 'success');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovoServico')).hide();
-    adicionarItem({ ...novo, id: novo.Id, tipo: 'servico', nome_exibicao: novo.nome, preco: novo.precoBase });
+    adicionarItem({ ...novo, tipo: 'servico', nome_exibicao: novo.nome, preco: novo.precoBase });
   } catch (erro) {
     mostrarToast('Erro ao cadastrar serviço.', 'danger');
   }
