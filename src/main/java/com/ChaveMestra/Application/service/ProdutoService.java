@@ -2,11 +2,15 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.ProdutoRequest;
 import com.ChaveMestra.Application.dto.ProdutoResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.ProdutoMapper;
 import com.ChaveMestra.Application.model.Categoria;
 import com.ChaveMestra.Application.model.Fornecedor;
 import com.ChaveMestra.Application.model.Produto;
+import com.ChaveMestra.Application.repository.AtendimentoItemRepository;
 import com.ChaveMestra.Application.repository.CategoriaRepository;
+import com.ChaveMestra.Application.repository.EstoqueRepository;
 import com.ChaveMestra.Application.repository.FornecedorRepository;
 import com.ChaveMestra.Application.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
@@ -21,15 +25,21 @@ public class ProdutoService {
     private final CategoriaRepository categoriaRepository;
     private final FornecedorRepository fornecedorRepository;
     private final ProdutoMapper produtoMapper;
+    private final EstoqueRepository estoqueRepository;
+    private final AtendimentoItemRepository atendimentoItemRepository;
 
     public ProdutoService(ProdutoRepository produtoRepository,
                           CategoriaRepository categoriaRepository,
                           FornecedorRepository fornecedorRepository,
-                          ProdutoMapper produtoMapper) {
+                          ProdutoMapper produtoMapper,
+                          EstoqueRepository estoqueRepository,
+                          AtendimentoItemRepository atendimentoItemRepository) {
         this.produtoRepository = produtoRepository;
         this.categoriaRepository = categoriaRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.produtoMapper = produtoMapper;
+        this.estoqueRepository = estoqueRepository;
+        this.atendimentoItemRepository = atendimentoItemRepository;
     }
 
     @Transactional
@@ -93,7 +103,13 @@ public class ProdutoService {
     @Transactional
     public void excluir(Integer id) {
         if (!produtoRepository.existsById(id)) {
-            throw new RuntimeException("Produto não encontrado");
+            throw new ResourceNotFoundException("Produto não encontrado");
+        }
+        if (estoqueRepository.findByProdutoId(id).isPresent()) {
+            throw new BusinessException("Não foi possível excluir - produto possui estoque vinculado");
+        }
+        if (atendimentoItemRepository.existsByProdutoId(id)) {
+            throw new BusinessException("Não foi possível excluir - produto possui itens de atendimento vinculados");
         }
         produtoRepository.deleteById(id);
     }
