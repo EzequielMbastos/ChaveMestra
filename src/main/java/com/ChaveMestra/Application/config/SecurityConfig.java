@@ -1,5 +1,6 @@
 package com.ChaveMestra.Application.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -14,6 +15,12 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Value("${app.security.basic.user:admin}")
+    private String basicUser;
+
+    @Value("${app.security.basic.password:admin123}")
+    private String basicPassword;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -31,8 +38,8 @@ public class SecurityConfig {
     @Bean
     public InMemoryUserDetailsManager userDetailsService() {
         UserDetails user = User.builder()
-                .username("admin")
-                .password(passwordEncoder().encode("admin123"))
+                .username(basicUser)
+                .password(passwordEncoder().encode(basicPassword))
                 .roles("ADMIN")
                 .build();
 

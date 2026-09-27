@@ -7,6 +7,8 @@ import com.ChaveMestra.Application.dto.ClienteResponse;
 
 
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/clientes")
@@ -25,12 +27,22 @@ public class ClienteController {
     }
 
 
-    @GetMapping
+    @GetMapping(params = "!nome")
     public ResponseEntity<List<ClienteResponse>> listar(){
         return ResponseEntity.ok(clienteService.listar());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(value = {"", "/buscar"}, params = "nome")
+    public ResponseEntity<List<ClienteResponse>> buscar(@RequestParam String nome) {
+        String nomeNormalizado = nome.trim().toLowerCase(Locale.ROOT);
+        List<ClienteResponse> clientes = clienteService.listar().stream()
+                .filter(cliente -> cliente.nome() != null
+                        && cliente.nome().toLowerCase(Locale.ROOT).contains(nomeNormalizado))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(clientes);
+    }
+
+    @GetMapping(value = "/{id}", params = "!nome")
     public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable Integer id) {
         ClienteResponse cliente = clienteService.buscarPorId(id);
         return ResponseEntity.ok(cliente);

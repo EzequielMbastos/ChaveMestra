@@ -7,14 +7,26 @@ import com.ChaveMestra.Application.model.CategoriaFinanceira;
 import com.ChaveMestra.Application.model.MovimentoFinanceiro;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 @Component
 public class MovimentoFinanceiroMapper {
 
     public MovimentoFinanceiroResponse toResponse(MovimentoFinanceiro movimento) {
+        String tipoCategoria = movimento.getCategoria() != null
+                ? movimento.getCategoria().getTipo().toLowerCase(Locale.ROOT)
+                : null;
+        String tipo = switch (tipoCategoria != null ? tipoCategoria : "") {
+            case "receita", "entrada" -> "ENTRADA";
+            case "despesa", "saida", "saída" -> "SAIDA";
+            default -> tipoCategoria != null ? tipoCategoria.toUpperCase(Locale.ROOT) : null;
+        };
+
         return new MovimentoFinanceiroResponse(
                 movimento.getId(),
                 movimento.getCategoria() != null ? movimento.getCategoria().getId() : null,
                 movimento.getCategoria() != null ? movimento.getCategoria().getNome() : null,
+                tipo,
                 movimento.getAtendimento() != null ? movimento.getAtendimento().getId() : null,
                 movimento.getNome(),
                 movimento.getDescricao(),

@@ -1,0 +1,16 @@
+# Arquivos e diretórios desnecessários no contexto de build do Docker.
+target/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.md
+HELP.md
+node_modules/
+*.log
+.env
+.DS_Store
+mvnw
+mvnw.cmd
+.mvn/
+erro.log

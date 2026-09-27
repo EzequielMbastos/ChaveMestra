@@ -11,6 +11,7 @@ public record ProdutoResponse(
         Integer categoriaId,
         String categoriaNome,
         Integer fornecedorId,
-        String fornecedorNome
+        String fornecedorNome,
+        Boolean ativo
 ) {
 }

@@ -17,7 +17,6 @@ public record AtendimentoRequest(
         @JsonAlias("forma_pagamento")
         String formaPagamento,
 
-        @NotNull(message = "desconto é obrigatório")
         @PositiveOrZero(message = "desconto não pode ser negativo")
         BigDecimal desconto,
 

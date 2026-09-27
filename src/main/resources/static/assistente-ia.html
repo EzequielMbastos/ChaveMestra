@@ -12,9 +12,26 @@
       display: flex;
       flex-direction: column;
       gap: 0.85rem;
-      max-height: 430px;
+      height: 430px;
       overflow-y: auto;
       padding-right: 0.25rem;
+    }
+
+    .history-list {
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      width: 100%;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .history-item.active {
+      border-color: #1E3A5F;
+      background: #eef4ff;
     }
 
     .message {
@@ -117,58 +134,60 @@
 
       <div id="conteudo-pagina">
         <div class="row g-4">
-          <div class="col-xl-4">
-            <div class="card shadow-sm">
-              <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-key me-2"></i>Conexão OpenRouter</h5>
+          <div class="col-xl-3">
+            <div class="card shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center gap-2">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Conversas</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" id="nova-conversa">
+                  <i class="bi bi-plus-lg me-1"></i>Nova conversa
+                </button>
               </div>
-              <div class="card-body">
-                <label for="openrouter-key" class="form-label">Chave da API</label>
-                <input type="password" id="openrouter-key" class="form-control mb-3" placeholder="Cole sua chave OpenRouter">
-                <div class="d-flex gap-2">
-                  <button class="btn btn-primary" id="btn-salvar-chave">Salvar chave</button>
-                  <button class="btn btn-outline-secondary" id="btn-limpar-chave">Limpar</button>
-                </div>
-                <small class="text-muted d-block mt-3">
-                  A IA apenas lê dados e gera análises, relatórios e gráficos. Ela nunca cria, edita ou exclui registros.
-                </small>
+              <div class="card-body p-2">
+                <div id="historico-conversas" class="history-list d-grid gap-2" aria-live="polite"></div>
+                <p id="historico-vazio" class="text-muted small text-center my-3 d-none">
+                  Nenhuma conversa no histórico.
+                </p>
               </div>
-            </div>
-
-            <div class="card shadow-sm mt-3">
-              <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Solicitações rápidas</h6>
-              </div>
-              <div class="card-body d-grid gap-2">
-                <button class="prompt-chip" data-prompt="Resuma as vendas da loja, identifique os produtos mais vendidos e diga se há estoque baixo relevante.">Resumo de vendas</button>
-                <button class="prompt-chip" data-prompt="Analise entradas e saídas do financeiro e me diga o saldo atual e os principais pontos de atenção.">Análise financeira</button>
-                <button class="prompt-chip" data-prompt="Crie um relatório de desempenho da loja em formato de insights práticos para o lojista, sem sugerir alterações em registros.">Relatório de desempenho</button>
-                <button class="prompt-chip" data-prompt="Mostre um gráfico de tendências para vendas, financeiro e estoque, com explicação simples do que está acontecendo.">Gráfico e tendência</button>
+              <div class="card-footer bg-white">
+                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="limpar-historico">
+                  <i class="bi bi-trash me-1"></i>Limpar histórico
+                </button>
               </div>
             </div>
           </div>
 
-          <div class="col-xl-8">
+          <div class="col-xl-9">
             <div class="card shadow-sm">
               <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-robot me-2"></i>Assistente de IA</h5>
               </div>
               <div class="card-body">
-                <div id="chat-mensagens" class="chat-messages">
-                  <div class="message bot">
-                    Olá! Posso analisar os dados da loja, montar relatórios e sugerir gráficos, mas não altero cadastros, financeiro ou estoque.
+                <div id="chat-mensagens" class="chat-messages" aria-live="polite">
+                  <div id="chat-vazio" class="text-muted text-center my-auto">
+                    Comece fazendo uma pergunta. Exemplos: 'Quantos clientes temos em SP?'
                   </div>
                 </div>
 
                 <form id="form-chat" class="mt-3">
                   <div class="input-group">
-                    <button type="button" id="btn-voz" class="btn btn-outline-secondary voice-toggle" title="Usar voz" aria-label="Usar voz">
-                      <i class="bi bi-mic"></i>
-                    </button>
-                    <input type="text" id="prompt-usuario" class="form-control" placeholder="Peça um relatório, análise ou gráfico sobre a loja..." autocomplete="off">
+                    <input type="text" id="prompt-usuario" class="form-control" placeholder="Pergunte sobre a loja..." autocomplete="off">
                     <button type="submit" class="btn btn-ouro">Enviar</button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Solicitações rápidas</h6>
+              </div>
+              <div class="card-body d-flex flex-wrap gap-2">
+                <button class="prompt-chip" data-prompt="Resuma as vendas da loja, identifique os produtos mais vendidos e diga se há estoque baixo relevante.">Resumo de vendas</button>
+                <button class="prompt-chip" data-prompt="Analise entradas e saídas do financeiro e me diga o saldo atual e os principais pontos de atenção.">Análise financeira</button>
+                <button class="prompt-chip" data-prompt="Crie um relatório de desempenho da loja em formato de insights práticos para o lojista, sem sugerir alterações em registros.">Relatório de desempenho</button>
+                <button class="prompt-chip" data-prompt="Mostre um gráfico de tendências para vendas, financeiro e estoque, com explicação simples do que está acontecendo.">Gráfico e tendência</button>
               </div>
             </div>
           </div>

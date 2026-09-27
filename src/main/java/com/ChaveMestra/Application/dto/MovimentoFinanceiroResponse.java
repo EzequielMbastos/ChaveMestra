@@ -8,6 +8,7 @@ public record MovimentoFinanceiroResponse(
         Integer id,
         Integer categoriaFinanceiraId,
         String categoriaFinanceiraNome,
+        String tipo,
         Integer atendimentoId,
         String nome,
         String descricao,

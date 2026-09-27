@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tbody.innerHTML = filtrados.map(produto => {
 
       const categoriaNome =
-          produto.categoria?.nome || 'Sem categoria';
+          produto.categoriaNome || 'Sem categoria';
 
       return `
         <tr>
@@ -95,8 +95,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             <button
               class="btn btn-sm btn-outline-danger"
+              title="Desativar (produto some da lista, mas mantém histórico)"
+              aria-label="Desativar produto"
               data-excluir="${produto.id}">
-              <i class="bi bi-trash"></i>
+              <i class="bi bi-x-circle"></i> Desativar
             </button>
 
           </td>
@@ -146,16 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              * Seleciona a categoria do produto
              */
 
-            if (produto.categoria) {
-
-              selectCategoria.value =
-                  produto.categoria.id;
-
-            } else {
-
-              selectCategoria.value = '';
-
-            }
+            selectCategoria.value = produto.categoriaId || '';
 
 
             bootstrap.Modal
@@ -180,14 +173,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const id = Number(botao.dataset.excluir);
 
-            if (!confirm('Deseja excluir este produto?')) {
+            if (!confirm('Deseja desativar este produto? Ele não aparecerá mais na lista, mas o histórico será mantido.')) {
               return;
             }
 
             await apiDelete(`/produtos/${id}`);
 
             mostrarToast(
-                'Produto excluído com sucesso!',
+                'Produto desativado com sucesso!',
                 'success'
             );
 
@@ -306,11 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
          * PAYLOAD
          * ========================================================
          *
-         * O backend espera:
-         *
-         * categoria: {
-         *     id: 3
-         * }
+         * O backend espera o ID da categoria diretamente.
          *
          */
 
@@ -324,9 +313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           precoCusto: 0,
 
-          categoria: {
-            id: categoriaId
-          }
+          categoriaId: categoriaId
 
         };
 

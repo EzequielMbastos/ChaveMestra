@@ -23,6 +23,9 @@ public class Produto {
     @Column(name = "preco_custo", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoCusto = BigDecimal.ZERO;
 
+    @Column(nullable = false)
+    private Boolean ativo = true;
+
     @ManyToOne
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
@@ -85,5 +88,13 @@ public class Produto {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Boolean getAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(Boolean ativo) {
+        this.ativo = ativo;
     }
 }

@@ -9,8 +9,12 @@ import com.ChaveMestra.Application.model.Atendimento;
 import com.ChaveMestra.Application.model.Cliente;
 import com.ChaveMestra.Application.model.Produto;
 import com.ChaveMestra.Application.model.Servico;
+import com.ChaveMestra.Application.model.CategoriaFinanceira;
+import com.ChaveMestra.Application.model.MovimentoFinanceiro;
 import com.ChaveMestra.Application.repository.AtendimentoRepository;
+import com.ChaveMestra.Application.repository.CategoriaFinanceiraRepository;
 import com.ChaveMestra.Application.repository.ClienteRepository;
+import com.ChaveMestra.Application.repository.MovimentoFinanceiroRepository;
 import com.ChaveMestra.Application.repository.ProdutoRepository;
 import com.ChaveMestra.Application.repository.ServicoRepository;
 import com.ChaveMestra.Application.exception.BusinessException;
@@ -30,19 +34,25 @@ public class AtendimentoService {
     private final ProdutoRepository produtoRepository;
     private final ServicoRepository servicoRepository;
     private final AtendimentoItemMapper atendimentoItemMapper;
+    private final CategoriaFinanceiraRepository categoriaFinanceiraRepository;
+    private final MovimentoFinanceiroRepository movimentoFinanceiroRepository;
 
     public AtendimentoService(AtendimentoRepository atendimentoRepository,
                               ClienteRepository clienteRepository,
                               AtendimentoMapper atendimentoMapper,
                               ProdutoRepository produtoRepository,
                               ServicoRepository servicoRepository,
-                              AtendimentoItemMapper atendimentoItemMapper) {
+                              AtendimentoItemMapper atendimentoItemMapper,
+                              CategoriaFinanceiraRepository categoriaFinanceiraRepository,
+                              MovimentoFinanceiroRepository movimentoFinanceiroRepository) {
         this.atendimentoRepository = atendimentoRepository;
         this.clienteRepository = clienteRepository;
         this.atendimentoMapper = atendimentoMapper;
         this.produtoRepository = produtoRepository;
         this.servicoRepository = servicoRepository;
         this.atendimentoItemMapper = atendimentoItemMapper;
+        this.categoriaFinanceiraRepository = categoriaFinanceiraRepository;
+        this.movimentoFinanceiroRepository = movimentoFinanceiroRepository;
     }
 
     @Transactional(readOnly = true)
@@ -109,6 +119,25 @@ public class AtendimentoService {
                 request.desconto() != null ? request.desconto() : BigDecimal.ZERO
         ));
         Atendimento salvo = atendimentoRepository.save(atendimento);
+
+        CategoriaFinanceira categoriaReceita = categoriaFinanceiraRepository.findAll().stream()
+                .filter(categoria -> "receita".equalsIgnoreCase(categoria.getTipo())
+                        || "entrada".equalsIgnoreCase(categoria.getTipo()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(
+                        "Nenhuma categoria financeira de receita foi cadastrada"));
+
+        MovimentoFinanceiro movimento = new MovimentoFinanceiro();
+        movimento.setCategoria(categoriaReceita);
+        movimento.setAtendimento(salvo);
+        movimento.setNome("Venda");
+        movimento.setDescricao("Atendimento #" + salvo.getId());
+        movimento.setValor(salvo.getValorTotal());
+        movimento.setDataMovimento(java.time.LocalDateTime.now());
+        movimento.setVencimento(java.time.LocalDate.now());
+        movimento.setStatus("pago");
+        movimentoFinanceiroRepository.save(movimento);
+
         return atendimentoMapper.toResponse(salvo);
     }
 

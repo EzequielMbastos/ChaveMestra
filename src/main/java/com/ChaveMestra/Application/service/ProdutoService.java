@@ -2,6 +2,8 @@ package com.ChaveMestra.Application.service;
 
 import com.ChaveMestra.Application.dto.ProdutoRequest;
 import com.ChaveMestra.Application.dto.ProdutoResponse;
+import com.ChaveMestra.Application.exception.BusinessException;
+import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.mapper.ProdutoMapper;
 import com.ChaveMestra.Application.model.Categoria;
 import com.ChaveMestra.Application.model.Fornecedor;
@@ -35,6 +37,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoResponse cadastrar(ProdutoRequest request) {
         Produto produto = produtoMapper.toEntity(request);
+        produto.setAtivo(true);
 
         Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
@@ -52,7 +55,7 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listar() {
-        return produtoRepository.findAll()
+        return produtoRepository.findByAtivoTrue()
                 .stream()
                 .map(produtoMapper::toResponse)
                 .toList();
@@ -60,15 +63,15 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public ProdutoResponse buscarPorId(Integer id) {
-        Produto produto = produtoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+        Produto produto = produtoRepository.findByIdAndAtivoTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
         return produtoMapper.toResponse(produto);
     }
 
     @Transactional
     public ProdutoResponse atualizar(Integer id, ProdutoRequest request) {
-        Produto produto = produtoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+        Produto produto = produtoRepository.findByIdAndAtivoTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
 
         Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
@@ -92,9 +95,12 @@ public class ProdutoService {
 
     @Transactional
     public void excluir(Integer id) {
-        if (!produtoRepository.existsById(id)) {
-            throw new RuntimeException("Produto não encontrado");
+        Produto produto = produtoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
+        if (Boolean.FALSE.equals(produto.getAtivo())) {
+            throw new BusinessException("Produto já está desativado");
         }
-        produtoRepository.deleteById(id);
+        produto.setAtivo(false);
+        produtoRepository.save(produto);
     }
 }

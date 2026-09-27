@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('servico-id').value = servico.id;
         document.getElementById('servico-nome').value = servico.nome;
-        document.getElementById('servico-preco').value = servico.preco_base;
+        document.getElementById('servico-preco').value = servico.precoBase;
 
         bootstrap.Modal.getOrCreateInstance(modal).show();
       });
@@ -54,10 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const id = document.getElementById('servico-id').value;
     const payload = {
       nome: document.getElementById('servico-nome').value.trim(),
-      preco_base: Number(document.getElementById('servico-preco').value)
+      precoBase: Number(document.getElementById('servico-preco').value)
     };
 
-    if (!payload.nome || payload.preco_base <= 0) {
+    if (!payload.nome || payload.precoBase <= 0) {
       mostrarToast('Preencha corretamente os campos do serviço.', 'warning');
       return;
     }

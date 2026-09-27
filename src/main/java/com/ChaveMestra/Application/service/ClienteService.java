@@ -69,6 +69,7 @@ public class ClienteService {
         cliente.setCpf(dados.cpf());
         cliente.setTelefone(dados.telefone());
         cliente.setEndereco(dados.endereco());
+        cliente.setEstado(dados.estado());
         cliente = clienteRepository.save(cliente);
         return clienteMapper.toResponse(cliente);
     }
