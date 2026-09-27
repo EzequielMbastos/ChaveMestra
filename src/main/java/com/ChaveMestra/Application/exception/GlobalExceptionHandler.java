@@ -30,6 +30,14 @@ public class GlobalExceptionHandler {
                 .body(Map.of("erro", exception.getMessage()));
     }
 
+    @ExceptionHandler(IaRateLimitException.class)
+    public ResponseEntity<Map<String, String>> handleRateLimit(IaRateLimitException exception) {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(exception.getSegundosParaRetry()))
+                .body(Map.of("erro", exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationException(
             MethodArgumentNotValidException exception) {

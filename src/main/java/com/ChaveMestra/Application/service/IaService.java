@@ -104,6 +104,13 @@ public class IaService {
                 "content", SYSTEM_PROMPT + "A flag 'confirmado' indica se o usuário já confirmou uma ação pendente. "
                         + "Se 'confirmado' for true, você pode executar a ação proposta anteriormente. "
                         + "Se for false, apenas proponha. Neste pedido, confirmado=false."));
+        if (request.interacaoIdContexto() != null) {
+            IaInteracao contexto = iaInteracaoService.buscarPorId(request.interacaoIdContexto());
+            messages.add(Map.of("role", "user", "content", contexto.getUsuarioPergunta()));
+            if (contexto.getIaResposta() != null && !contexto.getIaResposta().isBlank()) {
+                messages.add(Map.of("role", "assistant", "content", contexto.getIaResposta()));
+            }
+        }
         messages.add(Map.of("role", "user", "content", request.pergunta()));
 
         String resposta = null;

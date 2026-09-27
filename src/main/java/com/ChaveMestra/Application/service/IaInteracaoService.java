@@ -29,6 +29,11 @@ public class IaInteracaoService {
         return iaInteracaoRepository.findAllByOrderByDataInteracaoDesc();
     }
 
+    @Transactional
+    public void excluirTodas() {
+        iaInteracaoRepository.deleteAllInBatch();
+    }
+
     @Transactional(readOnly = true)
     public IaInteracao buscarPorId(Integer id) {
         return iaInteracaoRepository.findById(id)

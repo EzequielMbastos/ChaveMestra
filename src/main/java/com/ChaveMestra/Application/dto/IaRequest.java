@@ -9,7 +9,8 @@ public record IaRequest(
         String pergunta,
         String tipo,
         Boolean confirmado,
-        Integer interacaoIdConfirmacao
+        Integer interacaoIdConfirmacao,
+        Integer interacaoIdContexto
 ) {
     public IaRequest {
         confirmado = Boolean.TRUE.equals(confirmado);

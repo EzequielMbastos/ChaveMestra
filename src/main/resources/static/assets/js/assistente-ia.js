@@ -239,6 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const result = await response.json();
       if (!response.ok) {
+        if (response.status === 429) {
+          const mensagemErro = result.erro || 'Limite de requisições atingido.';
+          throw new Error(mensagemErro);
+        }
         const mensagemErro = typeof result === 'object'
           ? Object.values(result).join(' ')
           : String(result);
