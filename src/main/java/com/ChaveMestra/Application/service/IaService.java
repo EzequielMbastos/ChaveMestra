@@ -1,9 +1,9 @@
 package com.ChaveMestra.Application.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.ChaveMestra.Application.dto.IaRequest;
 import com.ChaveMestra.Application.dto.IaResponse;
 import com.ChaveMestra.Application.exception.BusinessException;
@@ -187,7 +187,7 @@ public class IaService {
                     .retrieve()
                     .body(String.class);
             return result == null ? "null" : result;
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new BusinessException("Argumentos inválidos para tool " + nome);
         } catch (RestClientResponseException exception) {
             throw new BusinessException("Falha ao executar tool " + nome + ": "
