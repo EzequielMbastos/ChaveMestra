@@ -1,5 +1,6 @@
 package com.ChaveMestra.Application.service;
 
+import com.ChaveMestra.Application.exception.BusinessException;
 import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.model.IaInteracao;
 import com.ChaveMestra.Application.repository.IaInteracaoRepository;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,5 +86,33 @@ class IaInteracaoServiceTest {
         when(iaInteracaoRepository.existsById(1)).thenReturn(false);
 
         assertThrows(ResourceNotFoundException.class, () -> iaInteracaoService.excluir(1));
+    }
+
+    @Test
+    void confirmarAcaoExecutaRascunhoERegistraAcao() {
+        IaInteracao interacao = new IaInteracao();
+        interacao.setAcaoPendente("{\"clienteId\":1}");
+        when(iaInteracaoRepository.findByIdForUpdate(1)).thenReturn(Optional.of(interacao));
+
+        String acao = iaInteracaoService.confirmarAcao(1, rascunho -> {
+            assertEquals("{\"clienteId\":1}", rascunho);
+            return "criar_atendimento#27";
+        });
+
+        assertEquals("criar_atendimento#27", acao);
+        assertEquals("criar_atendimento#27", interacao.getAcaoExecutada());
+        assertNull(interacao.getAcaoPendente());
+        verify(iaInteracaoRepository).save(interacao);
+    }
+
+    @Test
+    void confirmarAcaoJaExecutadaNaoExecutaNovamente() {
+        IaInteracao interacao = new IaInteracao();
+        interacao.setAcaoPendente("{\"clienteId\":1}");
+        interacao.setAcaoExecutada("criar_atendimento#27");
+        when(iaInteracaoRepository.findByIdForUpdate(1)).thenReturn(Optional.of(interacao));
+
+        assertThrows(BusinessException.class,
+                () -> iaInteracaoService.confirmarAcao(1, rascunho -> "criar_atendimento#28"));
     }
 }

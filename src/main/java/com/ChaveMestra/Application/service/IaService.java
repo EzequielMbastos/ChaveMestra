@@ -21,17 +21,24 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class IaService {
 
     private static final String SYSTEM_PROMPT = "Você é um assistente de negócio do sistema ChaveMestra. "
             + "Você tem acesso a tools para consultar dados em tempo real. Use-as sempre "
-            + "que necessário para responder com dados concretos. Responda em português, claro e objetivo.";
+            + "que necessário para responder com dados concretos. Responda em português, claro e objetivo. "
+            + "Quando o usuário pedir para CRIAR um atendimento, você deve: "
+            + "1. Primeiro, buscar o cliente pelo nome (use buscar_cliente_por_nome). "
+            + "2. Buscar os produtos/serviços solicitados. "
+            + "3. APRESENTAR um resumo do que será criado (cliente, itens, valores, forma de pagamento). "
+            + "4. PERGUNTAR 'Confirma a criação?' e AGUARDAR a resposta. "
+            + "5. Só criar o atendimento se o usuário responder 'sim' ou 'confirmo'. "
+            + "Se o usuário não confirmar, NÃO execute a ação. ";
     private static final int MAX_TOOL_ITERATIONS = 5;
     private static final List<Long> RATE_LIMIT_RETRY_DELAYS_SECONDS = List.of(2L, 4L, 8L);
 
@@ -83,16 +90,24 @@ public class IaService {
     }
 
     public IaResponse chat(IaRequest request) {
+        long inicio = System.currentTimeMillis();
+        if (Boolean.TRUE.equals(request.confirmado())) {
+            return confirmarAtendimento(request, inicio);
+        }
         if (apiKey == null || apiKey.isBlank()) {
             throw new BusinessException("OPENROUTER_API_KEY não configurada");
         }
 
-        long inicio = System.currentTimeMillis();
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        messages.add(Map.of(
+                "role", "system",
+                "content", SYSTEM_PROMPT + "A flag 'confirmado' indica se o usuário já confirmou uma ação pendente. "
+                        + "Se 'confirmado' for true, você pode executar a ação proposta anteriormente. "
+                        + "Se for false, apenas proponha. Neste pedido, confirmado=false."));
         messages.add(Map.of("role", "user", "content", request.pergunta()));
 
         String resposta = null;
+        String[] acaoPendente = new String[1];
         for (int iteracao = 0; iteracao < MAX_TOOL_ITERATIONS; iteracao++) {
             JsonNode mensagem = chamarOpenRouter(messages);
             JsonNode toolCalls = mensagem.path("tool_calls");
@@ -117,7 +132,7 @@ public class IaService {
                 String toolCallId = toolCall.path("id").asText();
                 String toolName = toolCall.path("function").path("name").asText();
                 String arguments = toolCall.path("function").path("arguments").asText("{}");
-                String toolResult = executarTool(toolName, arguments);
+                String toolResult = executarTool(toolName, arguments, acaoPendente);
                 messages.add(Map.of(
                         "role", "tool",
                         "tool_call_id", toolCallId,
@@ -135,8 +150,49 @@ public class IaService {
                 resposta,
                 determinarTipo(request.tipo(), request.pergunta()),
                 tempoMs,
-                model);
+                model,
+                acaoPendente[0]);
 
+        if (acaoPendente[0] != null && interacao.getId() == null) {
+            throw new BusinessException("Não foi possível persistir a ação pendente para confirmação");
+        }
+        if (acaoPendente[0] != null) {
+            resposta += "\nPara confirmar, responda 'sim' ou 'confirmo' com confirmado=true e "
+                    + "interacaoIdConfirmacao=" + interacao.getId() + ".";
+            iaInteracaoService.atualizarResposta(interacao.getId(), resposta);
+        }
+
+        return new IaResponse(
+                interacao.getId(),
+                request.pergunta(),
+                resposta,
+                model,
+                tempoMs,
+                interacao.getDataInteracao());
+    }
+
+    private IaResponse confirmarAtendimento(IaRequest request, long inicio) {
+        if (request.interacaoIdConfirmacao() == null) {
+            throw new BusinessException("Informe interacaoIdConfirmacao para aprovar a ação pendente");
+        }
+        String respostaConfirmacao = request.pergunta().trim().toLowerCase(Locale.ROOT)
+                .replaceAll("[.!?,]+$", "").trim();
+        if (!Set.of("sim", "confirmo").contains(respostaConfirmacao)) {
+            throw new BusinessException("Para executar a ação pendente, responda somente 'sim' ou 'confirmo'");
+        }
+
+        String acao = iaInteracaoService.confirmarAcao(
+                request.interacaoIdConfirmacao(),
+                this::executarAtendimento);
+        BigDecimal tempoMs = BigDecimal.valueOf(System.currentTimeMillis() - inicio);
+        String resposta = "Atendimento criado com sucesso. Identificador: "
+                + acao.substring(acao.indexOf('#') + 1) + ".";
+        IaInteracao interacao = iaInteracaoService.registrar(
+                request.pergunta(),
+                resposta,
+                determinarTipo(request.tipo(), request.pergunta()),
+                tempoMs,
+                model);
         return new IaResponse(
                 interacao.getId(),
                 request.pergunta(),
@@ -188,7 +244,7 @@ public class IaService {
         }
     }
 
-    private String executarTool(String nome, String argumentos) {
+    private String executarTool(String nome, String argumentos, String[] acaoPendente) {
         try {
             JsonNode args = objectMapper.readTree(argumentos);
             String uri = switch (nome) {
@@ -200,9 +256,28 @@ public class IaService {
                         "/relatorios/atendimentos-recentes", args.path("limite").asInt(10));
                 case "estoque_critico" -> "/relatorios/estoque-critico";
                 case "relatorio_periodo" -> uriPeriodo(args);
+                case "buscar_cliente_por_nome" -> uriComNome("/clientes", args.path("nome").asText(""));
+                case "buscar_produto_por_nome" -> uriComNome("/produtos", args.path("nome").asText(""));
+                case "buscar_servico_por_nome" -> uriComNome("/servicos", args.path("nome").asText(""));
+                case "listar_clientes_recentes" -> "/clientes";
+                case "listar_formas_pagamento" -> null;
+                case "criar_atendimento" -> null;
                 default -> throw new BusinessException("Tool não permitida: " + nome);
             };
 
+            if ("listar_formas_pagamento".equals(nome)) {
+                return "[\"pix\",\"dinheiro\",\"cartao_credito\",\"cartao_debito\"]";
+            }
+            if ("criar_atendimento".equals(nome)) {
+                String rascunho = validarRascunhoAtendimento(args);
+                if (acaoPendente[0] != null && !acaoPendente[0].equals(rascunho)) {
+                    throw new BusinessException("A IA propôs mais de um atendimento na mesma interação");
+                }
+                acaoPendente[0] = rascunho;
+                return "Ação pendente de confirmação; o atendimento NÃO foi criado. "
+                        + "Apresente ao usuário o resumo com cliente, itens, valores e forma de pagamento, "
+                        + "e pergunte 'Confirma a criação?'.";
+            }
             String result = internalClient.get()
                     .uri(uri)
                     .headers(headers -> headers.setBasicAuth(internalUser, internalPassword))
@@ -219,10 +294,86 @@ public class IaService {
         }
     }
 
+    private String validarRascunhoAtendimento(JsonNode args) {
+        JsonNode clienteId = args.path("clienteId");
+        JsonNode formaPagamento = args.path("formaPagamento");
+        JsonNode itens = args.path("itens");
+        if (!clienteId.isIntegralNumber() || clienteId.intValue() <= 0
+                || !formaPagamento.isTextual()
+                || !Set.of("pix", "dinheiro", "cartao_credito", "cartao_debito")
+                        .contains(formaPagamento.asText())
+                || !itens.isArray() || itens.isEmpty()) {
+            throw new BusinessException("Dados inválidos para criar atendimento");
+        }
+        List<Map<String, Object>> itensValidados = new ArrayList<>();
+        for (JsonNode item : itens) {
+            String tipo = item.path("tipo").asText("");
+            if (!Set.of("produto", "servico").contains(tipo)
+                    || !item.path("id").isIntegralNumber() || item.path("id").intValue() <= 0
+                    || !item.path("quantidade").isIntegralNumber() || item.path("quantidade").intValue() <= 0) {
+                throw new BusinessException("Item inválido no rascunho de atendimento");
+            }
+            itensValidados.add(Map.of(
+                    "tipo", tipo,
+                    "id", item.path("id").intValue(),
+                    "quantidade", item.path("quantidade").intValue()));
+        }
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "clienteId", clienteId.intValue(),
+                    "formaPagamento", formaPagamento.asText(),
+                    "itens", itensValidados));
+        } catch (JacksonException exception) {
+            throw new BusinessException("Não foi possível preparar o atendimento para confirmação");
+        }
+    }
+
+    private String executarAtendimento(String rascunho) {
+        try {
+            JsonNode args = objectMapper.readTree(rascunho);
+            Map<String, Object> payload = Map.of(
+                    "clienteId", args.path("clienteId").intValue(),
+                    "formaPagamento", args.path("formaPagamento").asText(),
+                    "itens", objectMapper.convertValue(
+                            args.path("itens"),
+                            new TypeReference<List<Map<String, Object>>>() {}));
+            String result = internalClient.post()
+                    .uri("/atendimentos")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(headers -> headers.setBasicAuth(internalUser, internalPassword))
+                    .body(payload)
+                    .retrieve()
+                    .body(String.class);
+            JsonNode atendimento = result == null ? null : objectMapper.readTree(result);
+            if (atendimento == null || !atendimento.path("id").isIntegralNumber()) {
+                throw new BusinessException("Resposta inválida ao criar atendimento");
+            }
+            return "criar_atendimento#" + atendimento.path("id").asInt();
+        } catch (JacksonException exception) {
+            throw new BusinessException("Rascunho inválido para criar atendimento");
+        } catch (RestClientResponseException exception) {
+            throw new BusinessException("Falha ao criar atendimento: "
+                    + exception.getStatusCode().value() + " " + exception.getResponseBodyAsString());
+        } catch (RestClientException exception) {
+            throw new BusinessException("Falha ao criar atendimento: " + exception.getMessage());
+        }
+    }
+
     private String uriComLimite(String path, int limite) {
         return UriComponentsBuilder.fromPath(path)
                 .queryParam("limite", limite)
                 .build()
+                .toUriString();
+    }
+
+    private String uriComNome(String path, String nome) {
+        if (nome.isBlank()) {
+            throw new BusinessException("O nome para busca não pode estar vazio");
+        }
+        return UriComponentsBuilder.fromPath(path)
+                .queryParam("nome", nome)
+                .build()
+                .encode()
                 .toUriString();
     }
 
@@ -287,6 +438,39 @@ public class IaService {
                 Map.of(
                         "inicio", propriedade("string", "Data inicial no formato YYYY-MM-DD."),
                         "fim", propriedade("string", "Data final no formato YYYY-MM-DD."))));
+        definicoes.add(tool("buscar_cliente_por_nome",
+                "Busca clientes por nome (correspondência parcial, sem diferenciar maiúsculas/minúsculas).",
+                Map.of("nome", propriedade("string", "Nome ou parte do nome do cliente."))));
+        definicoes.add(tool("buscar_produto_por_nome",
+                "Busca produtos ativos por nome (correspondência parcial, sem diferenciar maiúsculas/minúsculas).",
+                Map.of("nome", propriedade("string", "Nome ou parte do nome do produto."))));
+        definicoes.add(tool("buscar_servico_por_nome",
+                "Busca serviços por nome (correspondência parcial, sem diferenciar maiúsculas/minúsculas).",
+                Map.of("nome", propriedade("string", "Nome ou parte do nome do serviço."))));
+        definicoes.add(tool("listar_clientes_recentes",
+                "Lista clientes cadastrados no sistema.",
+                Map.of()));
+        definicoes.add(tool("listar_formas_pagamento",
+                "Lista as formas de pagamento aceitas: pix, dinheiro, cartao_credito e cartao_debito.",
+                Map.of()));
+        definicoes.add(toolComObrigatorios(
+                "criar_atendimento",
+                "Prepara um rascunho de atendimento para confirmação explícita. Não cria o atendimento por conta própria.",
+                Map.of(
+                        "clienteId", propriedade("integer", "Identificador do cliente."),
+                        "itens", Map.of(
+                                "type", "array",
+                                "items", Map.of(
+                                        "type", "object",
+                                        "properties", Map.of(
+                                                "tipo", propriedade("string", "produto ou servico."),
+                                                "id", propriedade("integer", "Identificador do produto ou serviço."),
+                                                "quantidade", propriedade("integer", "Quantidade positiva.")),
+                                        "required", List.of("tipo", "id", "quantidade"))),
+                        "formaPagamento", Map.of(
+                                "type", "string",
+                                "enum", List.of("pix", "dinheiro", "cartao_credito", "cartao_debito"))),
+                List.of("clienteId", "itens", "formaPagamento")));
         return List.copyOf(definicoes);
     }
 
@@ -294,6 +478,20 @@ public class IaService {
         Map<String, Object> parameters = Map.of(
                 "type", "object",
                 "properties", propriedades);
+        Map<String, Object> function = Map.of(
+                "name", nome,
+                "description", descricao,
+                "parameters", parameters);
+        return Map.of("type", "function", "function", function);
+    }
+
+    private Map<String, Object> toolComObrigatorios(String nome, String descricao,
+                                                     Map<String, Object> propriedades,
+                                                     List<String> obrigatorios) {
+        Map<String, Object> parameters = Map.of(
+                "type", "object",
+                "properties", propriedades,
+                "required", obrigatorios);
         Map<String, Object> function = Map.of(
                 "name", nome,
                 "description", descricao,

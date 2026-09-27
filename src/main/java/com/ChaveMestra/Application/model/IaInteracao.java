@@ -34,6 +34,12 @@ public class IaInteracao {
     @Column(name = "observacao", length = 255)
     private String observacao;
 
+    @Column(name = "acao_executada", length = 255)
+    private String acaoExecutada;
+
+    @Column(name = "acao_pendente", columnDefinition = "text")
+    private String acaoPendente;
+
     @PrePersist
     public void prePersist() {
         if (dataInteracao == null) {
@@ -103,5 +109,21 @@ public class IaInteracao {
 
     public void setObservacao(String observacao) {
         this.observacao = observacao;
+    }
+
+    public String getAcaoExecutada() {
+        return acaoExecutada;
+    }
+
+    public void setAcaoExecutada(String acaoExecutada) {
+        this.acaoExecutada = acaoExecutada;
+    }
+
+    public String getAcaoPendente() {
+        return acaoPendente;
+    }
+
+    public void setAcaoPendente(String acaoPendente) {
+        this.acaoPendente = acaoPendente;
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/produtos")
@@ -26,8 +27,17 @@ public class ProdutoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProdutoResponse>> listar() {
-        return ResponseEntity.ok(produtoService.listar());
+    public ResponseEntity<List<ProdutoResponse>> listar(
+            @RequestParam(required = false) String nome) {
+        List<ProdutoResponse> produtos = produtoService.listar();
+        if (nome == null) {
+            return ResponseEntity.ok(produtos);
+        }
+        String nomeNormalizado = nome.trim().toLowerCase(Locale.ROOT);
+        return ResponseEntity.ok(produtos.stream()
+                .filter(produto -> produto.nome() != null
+                        && produto.nome().toLowerCase(Locale.ROOT).contains(nomeNormalizado))
+                .toList());
     }
 
     @GetMapping("/{id}")
