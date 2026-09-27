@@ -20,6 +20,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,6 +33,7 @@ public class IaService {
             + "Você tem acesso a tools para consultar dados em tempo real. Use-as sempre "
             + "que necessário para responder com dados concretos. Responda em português, claro e objetivo.";
     private static final int MAX_TOOL_ITERATIONS = 5;
+    private static final List<Long> RATE_LIMIT_RETRY_DELAYS_SECONDS = List.of(2L, 4L, 8L);
 
     private final IaInteracaoService iaInteracaoService;
     private final ObjectMapper objectMapper;
@@ -39,6 +41,7 @@ public class IaService {
     private final RestClient internalClient;
     private final String apiKey;
     private final String model;
+    private final List<String> providerOrder;
     private final String internalUser;
     private final String internalPassword;
     private final List<Map<String, Object>> tools;
@@ -49,6 +52,7 @@ public class IaService {
             @Value("${openrouter.api.url}") String apiUrl,
             @Value("${openrouter.api.key:}") String apiKey,
             @Value("${openrouter.api.model:deepseek/deepseek-chat}") String model,
+            @Value("${openrouter.api.provider-order:DeepInfra,Together,Fireworks}") String providerOrder,
             @Value("${openrouter.api.timeout-seconds:60}") int timeoutSeconds,
             @Value("${app.security.basic.user:admin}") String internalUser,
             @Value("${app.security.basic.password:admin123}") String internalPassword) {
@@ -56,6 +60,10 @@ public class IaService {
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
+        this.providerOrder = Arrays.stream(providerOrder.split(","))
+                .map(String::trim)
+                .filter(provider -> !provider.isEmpty())
+                .toList();
         this.internalUser = internalUser;
         this.internalPassword = internalPassword;
 
@@ -139,28 +147,44 @@ public class IaService {
     }
 
     private JsonNode chamarOpenRouter(List<Map<String, Object>> messages) {
+        Map<String, Object> providerPrefs = Map.of(
+                "order", providerOrder,
+                "allow_fallbacks", true);
         Map<String, Object> payload = Map.of(
                 "model", model,
                 "messages", messages,
                 "tools", tools,
-                "tool_choice", "auto");
-        try {
-            JsonNode response = openRouterClient.post()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .body(payload)
-                    .retrieve()
-                    .body(JsonNode.class);
-            JsonNode mensagem = response == null ? null : response.path("choices").path(0).path("message");
-            if (mensagem == null || mensagem.isMissingNode() || mensagem.isNull()) {
-                throw new BusinessException("OpenRouter retornou uma resposta inválida");
+                "tool_choice", "auto",
+                "provider", providerPrefs);
+        for (int tentativa = 0; ; tentativa++) {
+            try {
+                JsonNode response = openRouterClient.post()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + apiKey)
+                        .body(payload)
+                        .retrieve()
+                        .body(JsonNode.class);
+                JsonNode mensagem = response == null ? null : response.path("choices").path(0).path("message");
+                if (mensagem == null || mensagem.isMissingNode() || mensagem.isNull()) {
+                    throw new BusinessException("OpenRouter retornou uma resposta inválida");
+                }
+                return mensagem;
+            } catch (RestClientResponseException exception) {
+                if (exception.getStatusCode().value() == 429
+                        && tentativa < RATE_LIMIT_RETRY_DELAYS_SECONDS.size()) {
+                    try {
+                        Thread.sleep(RATE_LIMIT_RETRY_DELAYS_SECONDS.get(tentativa) * 1_000);
+                    } catch (InterruptedException interruptedException) {
+                        Thread.currentThread().interrupt();
+                        throw new BusinessException("Retry da chamada ao OpenRouter foi interrompido");
+                    }
+                    continue;
+                }
+                throw new BusinessException("Falha na chamada ao OpenRouter: "
+                        + exception.getStatusCode().value() + " " + exception.getResponseBodyAsString());
+            } catch (RestClientException exception) {
+                throw new BusinessException("Falha na chamada ao OpenRouter: " + exception.getMessage());
             }
-            return mensagem;
-        } catch (RestClientResponseException exception) {
-            throw new BusinessException("Falha na chamada ao OpenRouter: "
-                    + exception.getStatusCode().value() + " " + exception.getResponseBodyAsString());
-        } catch (RestClientException exception) {
-            throw new BusinessException("Falha na chamada ao OpenRouter: " + exception.getMessage());
         }
     }
 
