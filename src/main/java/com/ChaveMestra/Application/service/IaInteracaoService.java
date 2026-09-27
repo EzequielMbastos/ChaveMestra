@@ -3,6 +3,8 @@ package com.ChaveMestra.Application.service;
 import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.model.IaInteracao;
 import com.ChaveMestra.Application.repository.IaInteracaoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +13,8 @@ import java.util.List;
 
 @Service
 public class IaInteracaoService {
+
+    private static final Logger log = LoggerFactory.getLogger(IaInteracaoService.class);
 
     private final IaInteracaoRepository iaInteracaoRepository;
 
@@ -29,12 +33,10 @@ public class IaInteracaoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Interação de IA não encontrada"));
     }
 
-    @Transactional
     public IaInteracao registrar(String pergunta, String resposta, String tipo, BigDecimal tempoMs) {
         return registrar(pergunta, resposta, tipo, tempoMs, null);
     }
 
-    @Transactional
     public IaInteracao registrar(String pergunta, String resposta, String tipo, BigDecimal tempoMs, String modelo) {
         IaInteracao interacao = new IaInteracao();
         interacao.setUsuarioPergunta(pergunta);
@@ -42,7 +44,12 @@ public class IaInteracaoService {
         interacao.setTipoPergunta(tipo);
         interacao.setTempoResposta(tempoMs);
         interacao.setObservacao(modelo);
-        return iaInteracaoRepository.save(interacao);
+        try {
+            return iaInteracaoRepository.save(interacao);
+        } catch (RuntimeException exception) {
+            log.error("Falha ao registrar interação de IA (resposta será retornada mesmo assim): ", exception);
+            return interacao;
+        }
     }
 
     @Transactional
