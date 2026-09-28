@@ -2,13 +2,17 @@ package com.ChaveMestra.Application.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ChaveMestra.Application.model.Atendimento;
+import com.ChaveMestra.Application.model.AtendimentoItem;
 import com.ChaveMestra.Application.model.Cliente;
 import com.ChaveMestra.Application.model.Estoque;
 import com.ChaveMestra.Application.model.MovimentoFinanceiro;
+import com.ChaveMestra.Application.model.Produto;
+import com.ChaveMestra.Application.repository.AtendimentoItemRepository;
 import com.ChaveMestra.Application.repository.AtendimentoRepository;
 import com.ChaveMestra.Application.repository.ClienteRepository;
 import com.ChaveMestra.Application.repository.EstoqueRepository;
 import com.ChaveMestra.Application.repository.MovimentoFinanceiroRepository;
+import com.ChaveMestra.Application.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,15 +35,21 @@ public class RelatorioService {
     private final ClienteRepository clienteRepository;
     private final MovimentoFinanceiroRepository movimentoFinanceiroRepository;
     private final AtendimentoRepository atendimentoRepository;
+    private final AtendimentoItemRepository atendimentoItemRepository;
+    private final ProdutoRepository produtoRepository;
 
     public RelatorioService(EstoqueRepository estoqueRepository,
                             ClienteRepository clienteRepository,
                             MovimentoFinanceiroRepository movimentoFinanceiroRepository,
-                            AtendimentoRepository atendimentoRepository) {
+                            AtendimentoRepository atendimentoRepository,
+                            AtendimentoItemRepository atendimentoItemRepository,
+                            ProdutoRepository produtoRepository) {
         this.estoqueRepository = estoqueRepository;
         this.clienteRepository = clienteRepository;
         this.movimentoFinanceiroRepository = movimentoFinanceiroRepository;
         this.atendimentoRepository = atendimentoRepository;
+        this.atendimentoItemRepository = atendimentoItemRepository;
+        this.produtoRepository = produtoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -149,6 +160,60 @@ public class RelatorioService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ProdutoMaisVendido> produtosMaisVendidos(int limite) {
+        return rankingProdutos(limite, Comparator.comparingLong(ProdutoMaisVendido::quantidadeTotalVendida)
+                .reversed(), false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoMaisVendido> produtosMenosVendidos(int limite) {
+        return rankingProdutos(
+                limite,
+                Comparator.comparingLong(ProdutoMaisVendido::quantidadeTotalVendida),
+                true);
+    }
+
+    private List<ProdutoMaisVendido> rankingProdutos(
+            int limite,
+            Comparator<ProdutoMaisVendido> ordenacao,
+            boolean incluirProdutosSemVendas) {
+        Map<Integer, List<AtendimentoItem>> itensPorProduto = atendimentoItemRepository.findAll().stream()
+                .filter(item -> item.getProduto() != null)
+                .collect(Collectors.groupingBy(item -> item.getProduto().getId()));
+
+        Map<Integer, Produto> produtos = new HashMap<>();
+        if (incluirProdutosSemVendas) {
+            produtoRepository.findByAtivoTrue().forEach(produto -> produtos.put(produto.getId(), produto));
+        }
+        itensPorProduto.values().forEach(itens -> {
+            Produto produto = itens.get(0).getProduto();
+            produtos.put(produto.getId(), produto);
+        });
+
+        return produtos.values().stream()
+                .filter(produto -> incluirProdutosSemVendas || itensPorProduto.containsKey(produto.getId()))
+                .map(produto -> {
+                    List<AtendimentoItem> itens = itensPorProduto.getOrDefault(produto.getId(), List.of());
+                    long quantidadeVendida = itens.stream()
+                            .mapToLong(AtendimentoItem::getQuantidade)
+                            .sum();
+                    BigDecimal receita = itens.stream()
+                            .map(item -> (item.getValorUnitario() != null
+                                    ? item.getValorUnitario()
+                                    : BigDecimal.ZERO).multiply(BigDecimal.valueOf(item.getQuantidade())))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return new ProdutoMaisVendido(
+                            produto.getId(),
+                            produto.getNome(),
+                            quantidadeVendida,
+                            receita);
+                })
+                .sorted(ordenacao.thenComparing(ProdutoMaisVendido::produtoId))
+                .limit(Math.max(0, limite))
+                .toList();
+    }
+
     private BigDecimal somarPorTipo(List<MovimentoFinanceiro> movimentos, String tipoEsperado) {
         return movimentos.stream()
                 .filter(movimento -> movimento.getCategoria() != null)
@@ -241,5 +306,12 @@ public class RelatorioService {
             String nome,
             Integer quantidadeEstoque,
             Integer minimo
+    ) {}
+
+    public record ProdutoMaisVendido(
+            Integer produtoId,
+            String produtoNome,
+            long quantidadeTotalVendida,
+            BigDecimal receitaTotal
     ) {}
 }

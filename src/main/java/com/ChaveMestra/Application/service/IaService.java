@@ -43,6 +43,8 @@ public class IaService {
             5. Se faltarem dados, diga o que falta.
             6. Mencione anomalias, como saldo negativo ou estoque zerado.
             7. Use tools sempre que a pergunta envolver dados do sistema; não responda de memória.
+            Para "Qual o produto mais vendido?", consulte produtos_mais_vendidos e destaque o primeiro do ranking.
+            Para "O que não está saindo?", consulte produtos_menos_vendidos e destaque os últimos colocados.
             Formato:
             - Comece com uma resposta direta em 1-2 frases.
             - Depois, detalhe em bullets quando necessário.
@@ -354,6 +356,10 @@ public class IaService {
                 case "atendimentos_recentes" -> uriComLimite(
                         "/relatorios/atendimentos-recentes", args.path("limite").asInt(10));
                 case "estoque_critico" -> "/relatorios/estoque-critico";
+                case "produtos_mais_vendidos" -> uriComLimite(
+                        "/relatorios/produtos-mais-vendidos", args.path("limite").asInt(10));
+                case "produtos_menos_vendidos" -> uriComLimite(
+                        "/relatorios/produtos-menos-vendidos", args.path("limite").asInt(10));
                 case "relatorio_periodo" -> uriPeriodo(args);
                 case "buscar_cliente_por_nome" -> uriComNome("/clientes", args.path("nome").asText(""));
                 case "buscar_produto_por_nome" -> uriComNome("/produtos", args.path("nome").asText(""));
@@ -619,6 +625,12 @@ public class IaService {
         definicoes.add(tool("estoque_critico",
                 "Lista produtos ativos cuja quantidade em estoque está no mínimo ou abaixo dele.",
                 Map.of()));
+        definicoes.add(tool("produtos_mais_vendidos",
+                "Retorna os produtos mais vendidos, ordenados por quantidade total vendida.",
+                Map.of("limite", propriedade("integer", "Número de produtos a retornar, padrão 10."))));
+        definicoes.add(tool("produtos_menos_vendidos",
+                "Retorna os produtos menos vendidos, ordenados por quantidade total vendida crescente.",
+                Map.of("limite", propriedade("integer", "Número de produtos a retornar, padrão 10."))));
         definicoes.add(tool("relatorio_periodo",
                 "Retorna resumo financeiro e movimentos de um período opcional.",
                 Map.of(
