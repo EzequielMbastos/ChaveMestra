@@ -58,13 +58,31 @@ public class IaInteracaoService {
 
     public IaInteracao registrar(String pergunta, String resposta, String tipo, BigDecimal tempoMs,
                                  String modelo, String acaoPendente) {
+        IaInteracao interacao = novaInteracao(pergunta, resposta, tipo, tempoMs, modelo);
+        interacao.setAcaoPendente(acaoPendente);
+        return salvar(interacao);
+    }
+
+    public IaInteracao registrar(String pergunta, String resposta, String tipo, BigDecimal tempoMs,
+                                 String modelo, Integer promptTokens, Integer completionTokens, Integer totalTokens,
+                                 String acaoExecutada) {
+        IaInteracao interacao = novaInteracao(pergunta, resposta, tipo, tempoMs, modelo);
+        interacao.setAcaoExecutada(acaoExecutada);
+        return salvar(interacao);
+    }
+
+    private IaInteracao novaInteracao(String pergunta, String resposta, String tipo, BigDecimal tempoMs,
+                                      String modelo) {
         IaInteracao interacao = new IaInteracao();
         interacao.setUsuarioPergunta(pergunta);
         interacao.setIaResposta(resposta);
         interacao.setTipoPergunta(tipo);
         interacao.setTempoResposta(tempoMs);
         interacao.setObservacao(modelo);
-        interacao.setAcaoPendente(acaoPendente);
+        return interacao;
+    }
+
+    private IaInteracao salvar(IaInteracao interacao) {
         try {
             return iaInteracaoRepository.save(interacao);
         } catch (RuntimeException exception) {
