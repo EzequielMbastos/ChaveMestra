@@ -4,6 +4,7 @@ import com.ChaveMestra.Application.config.SecurityConfig;
 import com.ChaveMestra.Application.dto.IaResponse;
 import com.ChaveMestra.Application.model.IaInteracao;
 import com.ChaveMestra.Application.service.IaInteracaoService;
+import com.ChaveMestra.Application.service.IaRateLimitService;
 import com.ChaveMestra.Application.service.IaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,9 @@ class IaControllerTest {
 
     @MockitoBean
     private IaInteracaoService iaInteracaoService;
+
+    @MockitoBean
+    private IaRateLimitService iaRateLimitService;
 
     @Test
     @WithMockUser
