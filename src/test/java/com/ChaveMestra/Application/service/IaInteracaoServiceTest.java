@@ -50,6 +50,20 @@ class IaInteracaoServiceTest {
     }
 
     @Test
+    void registrarArmazenaAcaoExecutada() {
+        when(iaInteracaoRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        iaInteracaoService.registrar(
+                "pergunta", "resposta", "consulta", BigDecimal.TEN,
+                "modelo", 10, 20, 30, "criar_atendimento#27");
+
+        ArgumentCaptor<IaInteracao> captor = ArgumentCaptor.forClass(IaInteracao.class);
+        verify(iaInteracaoRepository).save(captor.capture());
+        assertEquals("criar_atendimento#27", captor.getValue().getAcaoExecutada());
+    }
+
+    @Test
     void listarRetornaListaDoRepository() {
         List<IaInteracao> interacoes = List.of(new IaInteracao());
         when(iaInteracaoRepository.findAllByOrderByDataInteracaoDesc()).thenReturn(interacoes);

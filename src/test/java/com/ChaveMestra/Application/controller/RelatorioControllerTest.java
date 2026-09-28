@@ -66,4 +66,22 @@ class RelatorioControllerTest {
         mockMvc.perform(get("/relatorios/estoque-critico"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @WithMockUser
+    void produtosMaisVendidosRetornaOk() throws Exception {
+        when(relatorioService.produtosMaisVendidos(5)).thenReturn(List.of());
+
+        mockMvc.perform(get("/relatorios/produtos-mais-vendidos").param("limite", "5"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser
+    void produtosMenosVendidosRetornaOk() throws Exception {
+        when(relatorioService.produtosMenosVendidos(10)).thenReturn(List.of());
+
+        mockMvc.perform(get("/relatorios/produtos-menos-vendidos"))
+                .andExpect(status().isOk());
+    }
 }

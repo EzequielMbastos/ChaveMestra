@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const campoTipo = document.getElementById('financeiro-tipo');
   const campoPessoa = document.getElementById('financeiro-pessoa');
   const campoCategoria = document.getElementById('financeiro-categoria');
+  const tipoCategoriaPorMovimento = {
+    ENTRADA: 'receita',
+    SAIDA: 'despesa'
+  };
   let categoriasFinanceiras = [];
 
   async function carregarCategorias() {
@@ -13,10 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function atualizarCategoriasDisponiveis() {
-    const tipoSelecionado = campoTipo.value.toLowerCase();
-    const categoriasFiltradas = categoriasFinanceiras.filter(
-      categoria => categoria.tipo.toLowerCase() === tipoSelecionado
-    );
+    const tipoSelecionado = campoTipo.value;
+    const tipoCategoria = tipoCategoriaPorMovimento[tipoSelecionado];
+    const categoriasFiltradas = tipoCategoria
+      ? categoriasFinanceiras.filter(
+          categoria => categoria.tipo?.trim().toLowerCase() === tipoCategoria
+        )
+      : categoriasFinanceiras;
 
     campoCategoria.innerHTML = '<option value="">Selecione uma categoria</option>' +
       categoriasFiltradas

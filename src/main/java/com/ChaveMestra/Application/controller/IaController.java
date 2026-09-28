@@ -1,5 +1,6 @@
 package com.ChaveMestra.Application.controller;
 
+import com.ChaveMestra.Application.dto.IaAvaliacaoRequest;
 import com.ChaveMestra.Application.dto.IaRequest;
 import com.ChaveMestra.Application.dto.IaResponse;
 import com.ChaveMestra.Application.model.IaInteracao;
@@ -15,9 +16,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ia")
@@ -37,6 +40,18 @@ public class IaController {
     public ResponseEntity<IaResponse> chat(@Valid @RequestBody IaRequest request, Authentication auth) {
         iaRateLimitService.verificarLimite(auth.getName());
         return ResponseEntity.ok(iaService.chat(request));
+    }
+
+    @PostMapping("/interacoes/{id}/avaliar")
+    public ResponseEntity<IaInteracao> avaliar(
+            @PathVariable Integer id,
+            @Valid @RequestBody IaAvaliacaoRequest request) {
+        return ResponseEntity.ok(iaInteracaoService.avaliar(id, request));
+    }
+
+    @GetMapping("/estatisticas-avaliacao")
+    public ResponseEntity<Map<String, Object>> estatisticas() {
+        return ResponseEntity.ok(iaInteracaoService.estatisticasAvaliacao());
     }
 
     @GetMapping("/historico")

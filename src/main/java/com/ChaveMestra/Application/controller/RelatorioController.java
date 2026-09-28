@@ -54,4 +54,16 @@ public class RelatorioController {
     public ResponseEntity<List<RelatorioService.EstoqueCritico>> estoqueCritico() {
         return ResponseEntity.ok(relatorioService.estoqueCritico());
     }
+
+    @GetMapping("/produtos-mais-vendidos")
+    public ResponseEntity<List<RelatorioService.ProdutoMaisVendido>> produtosMaisVendidos(
+            @RequestParam(defaultValue = "10") int limite) {
+        return ResponseEntity.ok(relatorioService.produtosMaisVendidos(limite));
+    }
+
+    @GetMapping("/produtos-menos-vendidos")
+    public ResponseEntity<List<RelatorioService.ProdutoMaisVendido>> produtosMenosVendidos(
+            @RequestParam(defaultValue = "10") int limite) {
+        return ResponseEntity.ok(relatorioService.produtosMenosVendidos(limite));
+    }
 }

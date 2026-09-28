@@ -30,6 +30,30 @@ document.addEventListener('DOMContentLoaded', () => {
     elemento.textContent = texto;
     chatMensagens.appendChild(elemento);
     rolarChatParaBaixo();
+    return elemento;
+  }
+
+  function adicionarRespostaIA(texto, interacao) {
+    const mensagem = adicionarMensagem(texto, 'bot');
+    const id = Number(interacao?.id ?? interacao?.interacaoId);
+    if (!Number.isInteger(id) || id <= 0) return;
+
+    if (interacao.avaliacao != null) {
+      const agradecimento = document.createElement('div');
+      agradecimento.className = 'avaliacao-obrigado';
+      agradecimento.textContent = 'Obrigado pelo feedback! ✅';
+      mensagem.appendChild(agradecimento);
+      return;
+    }
+
+    const avaliacao = document.createElement('div');
+    avaliacao.className = 'avaliacao';
+    avaliacao.dataset.interacaoId = String(id);
+    avaliacao.innerHTML = `
+      <button type="button" class="btn-avaliar btn-positivo" data-nota="5" title="Útil" aria-label="Resposta útil">👍</button>
+      <button type="button" class="btn-avaliar btn-negativo" data-nota="1" title="Não ajudou" aria-label="Resposta não ajudou">👎</button>
+    `;
+    mensagem.appendChild(avaliacao);
   }
 
   function rolarChatParaBaixo() {
@@ -84,8 +108,31 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(STORAGE_KEYS.conversationId, String(conversaAtualId));
     limparMensagens();
     adicionarMensagem(interacao.usuarioPergunta || '', 'user');
-    adicionarMensagem(interacao.iaResposta || 'Esta interação não possui resposta registrada.', 'bot');
+    adicionarRespostaIA(
+      interacao.iaResposta || 'Esta interação não possui resposta registrada.',
+      interacao
+    );
     renderizarHistorico();
+  }
+
+  async function carregarEstatisticasAvaliacao() {
+    const resumo = document.getElementById('ia-avaliacoes-resumo');
+    if (!resumo) return;
+
+    try {
+      const response = await fetch('/ia/estatisticas-avaliacao');
+      if (!response.ok) throw new Error(`Erro HTTP ${response.status}`);
+      const estatisticas = await response.json();
+      if (!estatisticas.totalAvaliadas) {
+        resumo.textContent = 'Avaliações: nenhuma resposta avaliada ainda';
+        return;
+      }
+      resumo.textContent = `Avaliações: ⭐ ${Number(estatisticas.mediaAvaliacao).toFixed(1)}/5 `
+        + `(baseado em ${estatisticas.totalAvaliadas} respostas)`;
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas de avaliação:', error);
+      resumo.textContent = 'Avaliações indisponíveis';
+    }
   }
 
   async function carregarHistorico() {
@@ -249,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(mensagemErro || `Erro HTTP ${response.status}`);
       }
 
-      adicionarMensagem(result.resposta || 'A IA não retornou uma resposta.', 'bot');
+      adicionarRespostaIA(result.resposta || 'A IA não retornou uma resposta.', result);
       if (result.interacaoId != null) {
         conversaAtualId = Number(result.interacaoId);
         localStorage.setItem(STORAGE_KEYS.conversationId, String(conversaAtualId));
@@ -257,7 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
           id: conversaAtualId,
           usuarioPergunta: pergunta,
           iaResposta: result.resposta || 'A IA não retornou uma resposta.',
-          dataInteracao: result.dataInteracao
+          dataInteracao: result.dataInteracao,
+          avaliacao: null
         });
       }
       localStorage.removeItem(STORAGE_KEYS.draft);
@@ -282,6 +330,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   promptInput.addEventListener('input', () => {
     localStorage.setItem(STORAGE_KEYS.draft, promptInput.value);
+  });
+
+  chatMensagens.addEventListener('click', async (event) => {
+    const botao = event.target.closest('.btn-avaliar');
+    if (!botao) return;
+
+    const avaliacao = Number(botao.dataset.nota);
+    const container = botao.closest('.avaliacao');
+    const interacaoId = Number(container?.dataset.interacaoId);
+    if (!container || !Number.isInteger(interacaoId) || ![1, 5].includes(avaliacao)) return;
+
+    let comentario;
+    if (avaliacao === 1) {
+      comentario = window.prompt('O que poderíamos melhorar? (opcional)');
+    }
+
+    container.querySelectorAll('button').forEach((item) => {
+      item.disabled = true;
+    });
+    try {
+      const payload = { avaliacao };
+      if (comentario?.trim()) payload.comentario = comentario.trim();
+      const response = await fetch(`/ia/interacoes/${interacaoId}/avaliar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.erro || `Erro HTTP ${response.status}`);
+      }
+
+      const agradecimento = document.createElement('span');
+      agradecimento.className = 'avaliacao-obrigado';
+      agradecimento.textContent = 'Obrigado pelo feedback! ✅';
+      container.replaceWith(agradecimento);
+      historico = historico.map((interacao) => Number(interacao.id) === interacaoId
+        ? { ...interacao, avaliacao: result.avaliacao, comentarioAvaliacao: result.comentarioAvaliacao }
+        : interacao);
+      await carregarEstatisticasAvaliacao();
+    } catch (error) {
+      container.querySelectorAll('button').forEach((item) => {
+        item.disabled = false;
+      });
+      mostrarToast(error.message || 'Não foi possível registrar a avaliação.', 'danger');
+    }
   });
 
   historicoLista.addEventListener('click', (event) => {
@@ -322,4 +416,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   carregarHistorico();
   carregarResumoLoja();
+  carregarEstatisticasAvaliacao();
 });
