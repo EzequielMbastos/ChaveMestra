@@ -1,5 +1,6 @@
 package com.ChaveMestra.Application.service;
 
+import com.ChaveMestra.Application.dto.IaAvaliacaoRequest;
 import com.ChaveMestra.Application.exception.BusinessException;
 import com.ChaveMestra.Application.exception.ResourceNotFoundException;
 import com.ChaveMestra.Application.model.IaInteracao;
@@ -10,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 @Service
@@ -46,6 +49,47 @@ public class IaInteracaoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Interação de IA não encontrada"));
         interacao.setIaResposta(resposta);
         iaInteracaoRepository.save(interacao);
+    }
+
+    @Transactional
+    public IaInteracao avaliar(Integer id, IaAvaliacaoRequest request) {
+        IaInteracao interacao = buscarPorId(id);
+        interacao.setAvaliacao(request.avaliacao());
+        interacao.setComentarioAvaliacao(request.comentario());
+        interacao.setAvaliadoEm(LocalDateTime.now());
+        return iaInteracaoRepository.save(interacao);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> estatisticasAvaliacao() {
+        List<IaInteracao> todas = iaInteracaoRepository.findAll();
+        List<IaInteracao> avaliadas = todas.stream()
+                .filter(interacao -> interacao.getAvaliacao() != null)
+                .toList();
+
+        if (avaliadas.isEmpty()) {
+            return Map.of(
+                    "totalInteracoes", todas.size(),
+                    "totalAvaliadas", 0,
+                    "mensagem", "Nenhuma avaliação registrada ainda");
+        }
+
+        double media = avaliadas.stream()
+                .mapToInt(IaInteracao::getAvaliacao)
+                .average()
+                .orElse(0);
+        long positivas = avaliadas.stream().filter(interacao -> interacao.getAvaliacao() >= 4).count();
+        long negativas = avaliadas.stream().filter(interacao -> interacao.getAvaliacao() <= 2).count();
+        long neutras = avaliadas.size() - positivas - negativas;
+
+        return Map.of(
+                "totalInteracoes", todas.size(),
+                "totalAvaliadas", avaliadas.size(),
+                "mediaAvaliacao", Math.round(media * 10) / 10.0,
+                "avaliacoesPositivas", positivas,
+                "avaliacoesNeutras", neutras,
+                "avaliacoesNegativas", negativas,
+                "percentualSatisfacao", Math.round(100.0 * positivas / avaliadas.size()));
     }
 
     public IaInteracao registrar(String pergunta, String resposta, String tipo, BigDecimal tempoMs) {

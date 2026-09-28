@@ -40,6 +40,15 @@ public class IaInteracao {
     @Column(name = "acao_pendente", columnDefinition = "text")
     private String acaoPendente;
 
+    @Column(name = "avaliacao")
+    private Integer avaliacao;
+
+    @Column(name = "comentario_avaliacao", length = 500)
+    private String comentarioAvaliacao;
+
+    @Column(name = "avaliado_em")
+    private LocalDateTime avaliadoEm;
+
     @PrePersist
     public void prePersist() {
         if (dataInteracao == null) {
@@ -125,5 +134,29 @@ public class IaInteracao {
 
     public void setAcaoPendente(String acaoPendente) {
         this.acaoPendente = acaoPendente;
+    }
+
+    public Integer getAvaliacao() {
+        return avaliacao;
+    }
+
+    public void setAvaliacao(Integer avaliacao) {
+        this.avaliacao = avaliacao;
+    }
+
+    public String getComentarioAvaliacao() {
+        return comentarioAvaliacao;
+    }
+
+    public void setComentarioAvaliacao(String comentarioAvaliacao) {
+        this.comentarioAvaliacao = comentarioAvaliacao;
+    }
+
+    public LocalDateTime getAvaliadoEm() {
+        return avaliadoEm;
+    }
+
+    public void setAvaliadoEm(LocalDateTime avaliadoEm) {
+        this.avaliadoEm = avaliadoEm;
     }
 }
