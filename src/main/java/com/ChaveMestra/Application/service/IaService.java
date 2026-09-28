@@ -8,6 +8,8 @@ import com.ChaveMestra.Application.dto.IaRequest;
 import com.ChaveMestra.Application.dto.IaResponse;
 import com.ChaveMestra.Application.exception.BusinessException;
 import com.ChaveMestra.Application.model.IaInteracao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -19,6 +21,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,17 +32,75 @@ import java.util.Set;
 @Service
 public class IaService {
 
-    private static final String SYSTEM_PROMPT = "Você é um assistente de negócio do sistema ChaveMestra. "
-            + "Você tem acesso a tools para consultar dados em tempo real. Use-as sempre "
-            + "que necessário para responder com dados concretos. Responda em português, claro e objetivo. "
-            + "Quando o usuário pedir para CRIAR um atendimento, você deve: "
-            + "1. Primeiro, buscar o cliente pelo nome (use buscar_cliente_por_nome). "
-            + "2. Buscar os produtos/serviços solicitados. "
-            + "3. APRESENTAR um resumo do que será criado (cliente, itens, valores, forma de pagamento). "
-            + "4. PERGUNTAR 'Confirma a criação?' e AGUARDAR a resposta. "
-            + "5. Só criar o atendimento se o usuário responder 'sim' ou 'confirmo'. "
-            + "Se o usuário não confirmar, NÃO execute a ação. ";
+    private static final Logger log = LoggerFactory.getLogger(IaService.class);
+    private static final String SYSTEM_PROMPT = """
+            Você é um analista de negócios do sistema ChaveMestra, especializado
+            em ajudar donos de chaveiros a entender seu negócio através de dados.
+
+            ## Seu papel
+
+            Você NÃO é um chatbot de FAQ. Você é um analista que:
+            - Consulta dados reais do sistema via tools
+            - Raciocina sobre os dados (compara, cruza, interpreta)
+            - Responde com clareza em português, com números concretos
+            - Nunca inventa dados — se não consultou, não responde
+
+            ## Quando usar tools
+
+            SEMPRE que a pergunta envolver dados do sistema (clientes, vendas,
+            estoque, financeiro), use as tools. Nunca responda de memória.
+
+            Se a pergunta envolver MÚLTIPLAS dimensões, chame várias tools em
+            sequência antes de responder. Exemplos:
+
+            - "Compare as vendas deste mês com o mês passado"
+              → chame comparar_periodos com os dois períodos
+              → compare os totais e explique a diferença
+
+            - "Qual categoria está vendendo melhor?"
+              → chame relatorio_periodo para o mês atual
+              → analise os itens por categoria
+              → identifique a maior
+
+            - "Tem produto em falta que vai prejudicar as vendas?"
+              → chame produtos_baixo_estoque
+              → chame estoque_critico
+              → cruze os dois e aponte os mais urgentes
+
+            - "Como está o negócio este mês?"
+              → chame financeiro_resumo E atendimentos_recentes
+              → sintetize um panorama
+
+            ## Como responder
+
+            1. Se for pergunta simples: resposta direta em 1-3 frases.
+            2. Se for pergunta composta: comece com a resposta principal, depois
+               detalhe com bullet points ou tabela markdown.
+            3. Se identificar algo relevante que o usuário NÃO perguntou mas
+               deveria saber (ex: estoque crítico durante análise de vendas),
+               mencione brevemente no final: "Observação: ..."
+            4. Se os dados não permitirem resposta, diga o que falta: "Não tenho
+               dados sobre X. Posso consultar Y se ajudar."
+
+            ## O que NUNCA fazer
+
+            - Inventar números ou tendências
+            - Responder sobre dados sem chamar a tool correspondente
+            - Dar respostas genéricas tipo "depende do seu negócio"
+            - Ignorar anomalias nos dados (saldo negativo, estoque zerado)
+
+            ## Formato
+
+            - Português brasileiro
+            - Números formatados: R$ 1.234,56 (não 1234.56)
+            - Datas: DD/MM/AAAA
+            - Tom profissional mas acessível (você fala com dono de negócio,
+              não com contador)
+
+            Responda sempre pensando: "isso ajuda o dono a TOMAR UMA DECISÃO?"
+            """;
     private static final int MAX_TOOL_ITERATIONS = 5;
+    private static final int MAX_EMPTY_RESPONSE_RETRIES = 2;
     private static final List<Long> RATE_LIMIT_RETRY_DELAYS_SECONDS = List.of(2L, 4L, 8L);
 
     private final IaInteracaoService iaInteracaoService;
@@ -103,7 +164,10 @@ public class IaService {
                 "role", "system",
                 "content", SYSTEM_PROMPT + "A flag 'confirmado' indica se o usuário já confirmou uma ação pendente. "
                         + "Se 'confirmado' for true, você pode executar a ação proposta anteriormente. "
-                        + "Se for false, apenas proponha. Neste pedido, confirmado=false."));
+                        + "Se for false, apenas proponha. Neste pedido, confirmado=false. "
+                        + "Quando o usuário pedir para criar um atendimento, busque o cliente e os produtos/serviços, "
+                        + "apresente um resumo com cliente, itens, valores e forma de pagamento, pergunte "
+                        + "'Confirma a criação?' e aguarde. O atendimento só será criado após confirmação explícita."));
         if (request.interacaoIdContexto() != null) {
             IaInteracao contexto = iaInteracaoService.buscarPorId(request.interacaoIdContexto());
             messages.add(Map.of("role", "user", "content", contexto.getUsuarioPergunta()));
@@ -219,7 +283,8 @@ public class IaService {
                 "tools", tools,
                 "tool_choice", "auto",
                 "provider", providerPrefs);
-        for (int tentativa = 0; ; tentativa++) {
+        int tentativaVazia = 0;
+        for (int tentativaRateLimit = 0; ; ) {
             try {
                 JsonNode response = openRouterClient.post()
                         .contentType(MediaType.APPLICATION_JSON)
@@ -228,19 +293,43 @@ public class IaService {
                         .retrieve()
                         .body(JsonNode.class);
                 JsonNode mensagem = response == null ? null : response.path("choices").path(0).path("message");
+                JsonNode toolCalls = mensagem == null ? null : mensagem.path("tool_calls");
+                JsonNode content = mensagem == null ? null : mensagem.path("content");
+                boolean semConteudo = content == null || content.isMissingNode()
+                        || content.isNull() || content.asText().isBlank();
+                boolean semTools = toolCalls == null || !toolCalls.isArray() || toolCalls.isEmpty();
+                if (semConteudo && semTools) {
+                    if (tentativaVazia >= MAX_EMPTY_RESPONSE_RETRIES) {
+                        throw new BusinessException("OpenRouter retornou uma resposta vazia após 3 tentativas");
+                    }
+                    tentativaVazia++;
+                    log.info("Resposta vazia do OpenRouter detectada. Retry {}/{}",
+                            tentativaVazia, MAX_EMPTY_RESPONSE_RETRIES);
+                    try {
+                        Thread.sleep(1_000);
+                    } catch (InterruptedException interruptedException) {
+                        Thread.currentThread().interrupt();
+                        throw new BusinessException("Retry da chamada ao OpenRouter foi interrompido");
+                    }
+                    continue;
+                }
+                if (tentativaVazia > 0) {
+                    log.info("Retry bem-sucedido");
+                }
                 if (mensagem == null || mensagem.isMissingNode() || mensagem.isNull()) {
                     throw new BusinessException("OpenRouter retornou uma resposta inválida");
                 }
                 return mensagem;
             } catch (RestClientResponseException exception) {
                 if (exception.getStatusCode().value() == 429
-                        && tentativa < RATE_LIMIT_RETRY_DELAYS_SECONDS.size()) {
+                        && tentativaRateLimit < RATE_LIMIT_RETRY_DELAYS_SECONDS.size()) {
                     try {
-                        Thread.sleep(RATE_LIMIT_RETRY_DELAYS_SECONDS.get(tentativa) * 1_000);
+                        Thread.sleep(RATE_LIMIT_RETRY_DELAYS_SECONDS.get(tentativaRateLimit) * 1_000);
                     } catch (InterruptedException interruptedException) {
                         Thread.currentThread().interrupt();
                         throw new BusinessException("Retry da chamada ao OpenRouter foi interrompido");
                     }
+                    tentativaRateLimit++;
                     continue;
                 }
                 throw new BusinessException("Falha na chamada ao OpenRouter: "
@@ -254,6 +343,16 @@ public class IaService {
     private String executarTool(String nome, String argumentos, String[] acaoPendente) {
         try {
             JsonNode args = objectMapper.readTree(argumentos);
+            switch (nome) {
+                case "comparar_periodos" -> {
+                    return compararPeriodos(args);
+                }
+                case "analisar_tendencia" -> {
+                    return analisarTendencia(args);
+                }
+                default -> {
+                }
+            }
             String uri = switch (nome) {
                 case "produtos_baixo_estoque" -> uriComLimite(
                         "/relatorios/produtos-baixo-estoque", args.path("limite").asInt(10));
@@ -404,6 +503,90 @@ public class IaService {
                 + (fim.isBlank() ? "" : "fim=" + fim);
     }
 
+    private String compararPeriodos(JsonNode args) {
+        LocalDate periodo1Inicio = dataObrigatoria(args, "periodo1_inicio");
+        LocalDate periodo1Fim = dataObrigatoria(args, "periodo1_fim");
+        LocalDate periodo2Inicio = dataObrigatoria(args, "periodo2_inicio");
+        LocalDate periodo2Fim = dataObrigatoria(args, "periodo2_fim");
+        validarPeriodo(periodo1Inicio, periodo1Fim);
+        validarPeriodo(periodo2Inicio, periodo2Fim);
+
+        JsonNode relatorio1 = buscarRelatorio(periodo1Inicio, periodo1Fim);
+        JsonNode relatorio2 = buscarRelatorio(periodo2Inicio, periodo2Fim);
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "periodo1", Map.of(
+                            "inicio", periodo1Inicio.toString(),
+                            "fim", periodo1Fim.toString(),
+                            "relatorio", relatorio1),
+                    "periodo2", Map.of(
+                            "inicio", periodo2Inicio.toString(),
+                            "fim", periodo2Fim.toString(),
+                            "relatorio", relatorio2)));
+        } catch (JacksonException exception) {
+            throw new BusinessException("Não foi possível montar a comparação dos períodos");
+        }
+    }
+
+    private String analisarTendencia(JsonNode args) {
+        LocalDate hoje = LocalDate.now();
+        List<Map<String, Object>> periodos = new ArrayList<>();
+        for (int mesesAtras = 2; mesesAtras >= 0; mesesAtras--) {
+            YearMonth mes = YearMonth.from(hoje).minusMonths(mesesAtras);
+            LocalDate inicio = mes.atDay(1);
+            LocalDate fim = mes.atDay(Math.min(hoje.getDayOfMonth(), mes.lengthOfMonth()));
+            periodos.add(Map.of(
+                    "inicio", inicio.toString(),
+                    "fim", fim.toString(),
+                    "relatorio", buscarRelatorio(inicio, fim)));
+        }
+        try {
+            return objectMapper.writeValueAsString(Map.of("periodos", periodos));
+        } catch (JacksonException exception) {
+            throw new BusinessException("Não foi possível montar a análise de tendência");
+        }
+    }
+
+    private LocalDate dataObrigatoria(JsonNode args, String campo) {
+        String valor = args.path(campo).asText("");
+        try {
+            if (valor.isBlank()) {
+                throw new java.time.DateTimeException("Data ausente");
+            }
+            return LocalDate.parse(valor);
+        } catch (java.time.DateTimeException exception) {
+            throw new BusinessException("Data inválida para comparar_periodos em "
+                    + campo + "; use YYYY-MM-DD");
+        }
+    }
+
+    private void validarPeriodo(LocalDate inicio, LocalDate fim) {
+        if (inicio.isAfter(fim)) {
+            throw new BusinessException("A data inicial do período deve ser anterior ou igual à data final");
+        }
+    }
+
+    private JsonNode buscarRelatorio(LocalDate inicio, LocalDate fim) {
+        String uri = UriComponentsBuilder.fromPath("/relatorios")
+                .queryParam("inicio", inicio)
+                .queryParam("fim", fim)
+                .build()
+                .toUriString();
+        String resultado = internalClient.get()
+                .uri(uri)
+                .headers(headers -> headers.setBasicAuth(internalUser, internalPassword))
+                .retrieve()
+                .body(String.class);
+        if (resultado == null || resultado.isBlank()) {
+            throw new BusinessException("O relatório do período retornou uma resposta vazia");
+        }
+        try {
+            return objectMapper.readTree(resultado);
+        } catch (JacksonException exception) {
+            throw new BusinessException("O relatório do período retornou JSON inválido");
+        }
+    }
+
     private String determinarTipo(String tipoSolicitado, String pergunta) {
         if (tipoSolicitado != null) {
             String tipoNormalizado = tipoSolicitado.trim().toLowerCase(Locale.ROOT);
@@ -445,6 +628,10 @@ public class IaService {
                 Map.of(
                         "inicio", propriedade("string", "Data inicial no formato YYYY-MM-DD."),
                         "fim", propriedade("string", "Data final no formato YYYY-MM-DD."))));
+        definicoes.add(toolCompararPeriodos());
+        definicoes.add(tool("analisar_tendencia",
+                "Retorna os totais financeiros dos últimos três meses, incluindo o mês atual até hoje.",
+                Map.of()));
         definicoes.add(tool("buscar_cliente_por_nome",
                 "Busca clientes por nome (correspondência parcial, sem diferenciar maiúsculas/minúsculas).",
                 Map.of("nome", propriedade("string", "Nome ou parte do nome do cliente."))));
@@ -479,6 +666,20 @@ public class IaService {
                                 "enum", List.of("pix", "dinheiro", "cartao_credito", "cartao_debito"))),
                 List.of("clienteId", "itens", "formaPagamento")));
         return List.copyOf(definicoes);
+    }
+
+    private Map<String, Object> toolCompararPeriodos() {
+        return toolComObrigatorios(
+                "comparar_periodos",
+                "Compara métricas financeiras entre dois períodos. Útil para responder "
+                        + "'como estamos comparados ao mês passado?' ou "
+                        + "'crescemos em relação ao trimestre anterior?'",
+                Map.of(
+                        "periodo1_inicio", propriedade("string", "Data inicial do 1º período (YYYY-MM-DD)."),
+                        "periodo1_fim", propriedade("string", "Data final do 1º período (YYYY-MM-DD)."),
+                        "periodo2_inicio", propriedade("string", "Data inicial do 2º período (YYYY-MM-DD)."),
+                        "periodo2_fim", propriedade("string", "Data final do 2º período (YYYY-MM-DD).")),
+                List.of("periodo1_inicio", "periodo1_fim", "periodo2_inicio", "periodo2_fim"));
     }
 
     private Map<String, Object> tool(String nome, String descricao, Map<String, Object> propriedades) {
