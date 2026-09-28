@@ -34,73 +34,22 @@ public class IaService {
 
     private static final Logger log = LoggerFactory.getLogger(IaService.class);
     private static final String SYSTEM_PROMPT = """
-            Você é um analista de negócios do sistema ChaveMestra, especializado
-            em ajudar donos de chaveiros a entender seu negócio através de dados.
-
-            ## Seu papel
-
-            Você NÃO é um chatbot de FAQ. Você é um analista que:
-            - Consulta dados reais do sistema via tools
-            - Raciocina sobre os dados (compara, cruza, interpreta)
-            - Responde com clareza em português, com números concretos
-            - Nunca inventa dados — se não consultou, não responde
-
-            ## Quando usar tools
-
-            SEMPRE que a pergunta envolver dados do sistema (clientes, vendas,
-            estoque, financeiro), use as tools. Nunca responda de memória.
-
-            Se a pergunta envolver MÚLTIPLAS dimensões, chame várias tools em
-            sequência antes de responder. Exemplos:
-
-            - "Compare as vendas deste mês com o mês passado"
-              → chame comparar_periodos com os dois períodos
-              → compare os totais e explique a diferença
-
-            - "Qual categoria está vendendo melhor?"
-              → chame relatorio_periodo para o mês atual
-              → analise os itens por categoria
-              → identifique a maior
-
-            - "Tem produto em falta que vai prejudicar as vendas?"
-              → chame produtos_baixo_estoque
-              → chame estoque_critico
-              → cruze os dois e aponte os mais urgentes
-
-            - "Como está o negócio este mês?"
-              → chame financeiro_resumo E atendimentos_recentes
-              → sintetize um panorama
-
-            ## Como responder
-
-            1. Se for pergunta simples: resposta direta em 1-3 frases.
-            2. Se for pergunta composta: comece com a resposta principal, depois
-               detalhe com bullet points ou tabela markdown.
-            3. Se identificar algo relevante que o usuário NÃO perguntou mas
-               deveria saber (ex: estoque crítico durante análise de vendas),
-               mencione brevemente no final: "Observação: ..."
-            4. Se os dados não permitirem resposta, diga o que falta: "Não tenho
-               dados sobre X. Posso consultar Y se ajudar."
-
-            ## O que NUNCA fazer
-
-            - Inventar números ou tendências
-            - Responder sobre dados sem chamar a tool correspondente
-            - Dar respostas genéricas tipo "depende do seu negócio"
-            - Ignorar anomalias nos dados (saldo negativo, estoque zerado)
-
-            ## Formato
-
-            - Português brasileiro
-            - Números formatados: R$ 1.234,56 (não 1234.56)
-            - Datas: DD/MM/AAAA
-            - Tom profissional mas acessível (você fala com dono de negócio,
-              não com contador)
-
-            Responda sempre pensando: "isso ajuda o dono a TOMAR UMA DECISÃO?"
+            Você é um analista de negócios do ChaveMestra. Consulte dados reais via tools. Nunca invente.
+            Regras:
+            1. Perguntas simples: use 1 tool.
+            2. Perguntas compostas: encadeie 2-3 tools no máximo.
+            3. Nunca chame mais de 3 tools por pergunta.
+            4. Responda em português com números formatados (R$ 1.234,56).
+            5. Se faltarem dados, diga o que falta.
+            6. Mencione anomalias, como saldo negativo ou estoque zerado.
+            7. Use tools sempre que a pergunta envolver dados do sistema; não responda de memória.
+            Formato:
+            - Comece com uma resposta direta em 1-2 frases.
+            - Depois, detalhe em bullets quando necessário.
+            - Mantenha tom profissional, mas acessível.
             """;
-    private static final int MAX_TOOL_ITERATIONS = 5;
-    private static final int MAX_EMPTY_RESPONSE_RETRIES = 2;
+    private static final int MAX_TOOL_ITERATIONS = 3;
+    private static final List<Long> EMPTY_RESPONSE_RETRY_DELAYS_SECONDS = List.of(1L, 2L, 4L, 8L);
     private static final List<Long> RATE_LIMIT_RETRY_DELAYS_SECONDS = List.of(2L, 4L, 8L);
 
     private final IaInteracaoService iaInteracaoService;
@@ -109,6 +58,7 @@ public class IaService {
     private final RestClient internalClient;
     private final String apiKey;
     private final String model;
+    private final String fallbackModel;
     private final List<String> providerOrder;
     private final String internalUser;
     private final String internalPassword;
@@ -120,6 +70,7 @@ public class IaService {
             @Value("${openrouter.api.url}") String apiUrl,
             @Value("${openrouter.api.key:}") String apiKey,
             @Value("${openrouter.api.model:deepseek/deepseek-chat}") String model,
+            @Value("${openrouter.api.model.fallback:deepseek/deepseek-v3.1}") String fallbackModel,
             @Value("${openrouter.api.provider-order:DeepInfra,Together,Fireworks}") String providerOrder,
             @Value("${openrouter.api.timeout-seconds:60}") int timeoutSeconds,
             @Value("${app.security.basic.user:admin}") String internalUser,
@@ -128,6 +79,7 @@ public class IaService {
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
+        this.fallbackModel = fallbackModel;
         this.providerOrder = Arrays.stream(providerOrder.split(","))
                 .map(String::trim)
                 .filter(provider -> !provider.isEmpty())
@@ -277,15 +229,20 @@ public class IaService {
         Map<String, Object> providerPrefs = Map.of(
                 "order", providerOrder,
                 "allow_fallbacks", true);
-        Map<String, Object> payload = Map.of(
-                "model", model,
-                "messages", messages,
-                "tools", tools,
-                "tool_choice", "auto",
-                "provider", providerPrefs);
-        int tentativaVazia = 0;
+        int retriesVazios = 0;
+        int respostasVaziasModeloPrincipal = 0;
+        String modeloAtual = model;
+        boolean fallbackAtivado = false;
         for (int tentativaRateLimit = 0; ; ) {
             try {
+                Map<String, Object> payload = Map.of(
+                        "model", modeloAtual,
+                        "messages", messages,
+                        "tools", tools,
+                        "tool_choice", "auto",
+                        "temperature", 0.3,
+                        "max_tokens", 1500,
+                        "provider", providerPrefs);
                 JsonNode response = openRouterClient.post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + apiKey)
@@ -299,21 +256,32 @@ public class IaService {
                         || content.isNull() || content.asText().isBlank();
                 boolean semTools = toolCalls == null || !toolCalls.isArray() || toolCalls.isEmpty();
                 if (semConteudo && semTools) {
-                    if (tentativaVazia >= MAX_EMPTY_RESPONSE_RETRIES) {
-                        throw new BusinessException("OpenRouter retornou uma resposta vazia após 3 tentativas");
+                    if (retriesVazios >= EMPTY_RESPONSE_RETRY_DELAYS_SECONDS.size()) {
+                        throw new BusinessException("OpenRouter retornou uma resposta vazia após "
+                                + (retriesVazios + 1) + " tentativas");
                     }
-                    tentativaVazia++;
+                    retriesVazios++;
                     log.info("Resposta vazia do OpenRouter detectada. Retry {}/{}",
-                            tentativaVazia, MAX_EMPTY_RESPONSE_RETRIES);
+                            retriesVazios, EMPTY_RESPONSE_RETRY_DELAYS_SECONDS.size());
+                    if (!fallbackAtivado && modeloAtual.equals(model)) {
+                        respostasVaziasModeloPrincipal++;
+                        if (respostasVaziasModeloPrincipal >= 2
+                                && !fallbackModel.isBlank() && !fallbackModel.equals(model)) {
+                            modeloAtual = fallbackModel;
+                            fallbackAtivado = true;
+                            log.info("Modelo principal falhou duas vezes com resposta vazia; "
+                                    + "ativando fallback {}", fallbackModel);
+                        }
+                    }
                     try {
-                        Thread.sleep(1_000);
+                        Thread.sleep(EMPTY_RESPONSE_RETRY_DELAYS_SECONDS.get(retriesVazios - 1) * 1_000);
                     } catch (InterruptedException interruptedException) {
                         Thread.currentThread().interrupt();
                         throw new BusinessException("Retry da chamada ao OpenRouter foi interrompido");
                     }
                     continue;
                 }
-                if (tentativaVazia > 0) {
+                if (retriesVazios > 0) {
                     log.info("Retry bem-sucedido");
                 }
                 if (mensagem == null || mensagem.isMissingNode() || mensagem.isNull()) {
