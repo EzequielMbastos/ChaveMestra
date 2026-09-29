@@ -23,6 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -133,8 +136,8 @@ public class AtendimentoService {
         movimento.setNome("Venda");
         movimento.setDescricao("Atendimento #" + salvo.getId());
         movimento.setValor(salvo.getValorTotal());
-        movimento.setDataMovimento(java.time.LocalDateTime.now());
-        movimento.setVencimento(java.time.LocalDate.now());
+        movimento.setDataMovimento(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
+        movimento.setVencimento(LocalDate.now(ZoneId.of("America/Sao_Paulo")));
         movimento.setStatus("pago");
         movimentoFinanceiroRepository.save(movimento);
 

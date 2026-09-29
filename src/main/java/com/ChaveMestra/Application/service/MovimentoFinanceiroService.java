@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -63,7 +64,7 @@ public class MovimentoFinanceiroService {
 
         // Se dataMovimento não foi informada, usa agora
         if (movimento.getDataMovimento() == null) {
-            movimento.setDataMovimento(LocalDateTime.now());
+            movimento.setDataMovimento(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
         }
 
         MovimentoFinanceiro salvo = movimentoRepository.save(movimento);
